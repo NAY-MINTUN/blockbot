@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>BlockBot Test</title>
+</head>
+<body>
+  <h2>BlockBot WebSocket Test</h2>
+  <button onclick="connect()">Connect</button>
+  <button onclick="disconnect()">Disconnect</button>
+  <br><br>
+
+  <label>Channel (0-3): <input id="channel" type="number" value="0" min="0" max="3"></label><br><br>
+  <label>Angle: <input id="angle" type="number" value="90"></label><br><br>
+  <button onclick="sendMove()">Send Move</button>
+  <button onclick="sendWait()">Send Wait 1s</button>
+  <br><br>
+
+  <div id="log" style="font-family:monospace; border:1px solid #ccc; padding:10px; height:200px; overflow-y:auto;"></div>
+
+  <script>
+    let ws = null;
+
+    function log(msg) {
+      const div = document.getElementById('log');
+      div.innerHTML += msg + '<br>';
+      div.scrollTop = div.scrollHeight;
+    }
+
+    function connect() {
+      ws = new WebSocket('ws://192.168.1.198:8080/ws');
+      ws.onopen = () => log('Connected');
+      ws.onclose = () => log('Disconnected');
+      ws.onerror = (e) => log('Error: ' + e);
+      ws.onmessage = (e) => log('Received: ' + e.data);
+    }
+
+    function disconnect() {
+      if (ws) ws.close();
+    }
+
+    function sendMove() {
+      if (!ws || ws.readyState !== WebSocket.OPEN) { log('Not connected'); return; }
+      const channel = parseInt(document.getElementById('channel').value);
+      const angle = parseInt(document.getElementById('angle').value);
+      const cmd = JSON.stringify({ cmd: 'move', channel, angle });
+      ws.send(cmd);
+      log('Sent: ' + cmd);
+    }
+
+    function sendWait() {
+      if (!ws || ws.readyState !== WebSocket.OPEN) { log('Not connected'); return; }
+      const cmd = JSON.stringify({ cmd: 'wait', second: 1 });
+      ws.send(cmd);
+      log('Sent: ' + cmd);
+    }
+  </script>
+</body>
+</html>

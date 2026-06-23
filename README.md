@@ -62,10 +62,10 @@ These limits were found by physically testing the arm with joystick control. Goi
 
 | Channel | Joint    | Servo  | Min | Max  | Notes                          |
 |---------|----------|--------|-----|------|--------------------------------|
-| 0       | Base     | MG996R | 0°  | 180° | full range is safe             |
-| 1       | Shoulder | MG90S  | 25° | 125° | joystick axis inverted in code |
-| 2       | Elbow    | MG90S  | 50° | 140° |                                |
-| 3       | Wrist    | MG90S  | 93° | 150° |                                |
+| 0       | Turntable| MG996R | 0°  | 180° | full range is safe             |
+| 1       | In/Out   | MG90S  | 25° | 125° | joystick axis inverted in code |
+| 2       | Up/Down  | MG90S  | 50° | 140° |                                |
+| 3       | Gripper  | MG90S  | 93° | 150° |                                |
 
 ---
 
