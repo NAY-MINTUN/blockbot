@@ -1,58 +1,518 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>BlockBot Test</title>
+  <meta charset="UTF-8">
+  <title>BlockBot Test Console</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #0f1117;
+      color: #e2e8f0;
+      padding: 20px;
+      min-height: 100vh;
+    }
+
+    h1 { font-size: 1.4rem; font-weight: 600; color: #94a3b8; margin-bottom: 18px; letter-spacing: 0.05em; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 340px 1fr;
+      gap: 16px;
+      max-width: 1100px;
+    }
+
+    .panel {
+      background: #1e2130;
+      border: 1px solid #2d3148;
+      border-radius: 10px;
+      padding: 16px;
+    }
+
+    .panel h2 {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #64748b;
+      margin-bottom: 14px;
+    }
+
+    /* Connection */
+    .conn-row { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; }
+    .conn-row input {
+      flex: 1;
+      background: #0f1117;
+      border: 1px solid #2d3148;
+      color: #e2e8f0;
+      border-radius: 6px;
+      padding: 7px 10px;
+      font-size: 0.85rem;
+      font-family: monospace;
+    }
+
+    .status-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: #ef4444;
+      flex-shrink: 0;
+      transition: background 0.3s;
+    }
+    .status-dot.connected  { background: #22c55e; box-shadow: 0 0 6px #22c55e88; }
+    .status-dot.connecting { background: #f59e0b; animation: pulse 0.8s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+    #status-text { font-size: 0.8rem; color: #64748b; }
+
+    /* Buttons */
+    .btn {
+      padding: 7px 14px;
+      border: none; border-radius: 6px;
+      font-size: 0.82rem; font-weight: 500;
+      cursor: pointer;
+      transition: opacity 0.15s, transform 0.1s;
+    }
+    .btn:hover   { opacity: 0.85; }
+    .btn:active  { transform: scale(0.97); }
+    .btn:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
+    .btn-blue  { background: #3b82f6; color: #fff; }
+    .btn-red   { background: #ef4444; color: #fff; }
+    .btn-green { background: #22c55e; color: #000; }
+    .btn-gray  { background: #374151; color: #e2e8f0; }
+    .btn-amber { background: #f59e0b; color: #000; }
+    .btn-sm    { padding: 5px 10px; font-size: 0.78rem; }
+
+    /* Health */
+    #health-result {
+      font-size: 0.8rem; font-family: monospace;
+      color: #64748b; min-height: 1.2em;
+    }
+
+    /* Channels */
+    .channel {
+      background: #0f1117;
+      border: 1px solid #2d3148;
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 10px;
+      transition: border-color 0.25s;
+    }
+    .channel.has-error   { border-color: #ef4444; }
+    .channel.has-success { border-color: #22c55e; }
+
+    .channel-header {
+      display: flex; align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .channel-label { font-size: 0.82rem; font-weight: 600; color: #94a3b8; }
+    .channel-badge {
+      font-size: 0.7rem; color: #64748b;
+      background: #1e2130;
+      border: 1px solid #2d3148;
+      border-radius: 4px; padding: 2px 7px;
+    }
+
+    .slider-row { display: flex; align-items: center; gap: 10px; }
+    .slider-row input[type=range] {
+      flex: 1; cursor: pointer;
+      accent-color: #3b82f6;
+    }
+    .angle-display {
+      font-family: monospace; font-size: 0.95rem;
+      color: #e2e8f0; width: 38px; text-align: right;
+    }
+
+    .channel-meta {
+      display: flex; justify-content: space-between;
+      margin-top: 5px;
+    }
+    .safe-hint  { font-size: 0.7rem; color: #475569; }
+    .channel-error {
+      font-size: 0.72rem; color: #f87171;
+      font-weight: 500; min-height: 1em;
+    }
+
+    /* Wait */
+    .wait-row { display: flex; gap: 8px; align-items: center; margin-top: 6px; }
+    .wait-row input {
+      width: 80px;
+      background: #0f1117; border: 1px solid #2d3148;
+      color: #e2e8f0; border-radius: 6px;
+      padding: 6px 8px; font-size: 0.85rem; text-align: center;
+    }
+
+    /* Sequence */
+    #seq-list {
+      min-height: 60px; max-height: 140px; overflow-y: auto;
+      background: #0f1117; border: 1px solid #2d3148;
+      border-radius: 6px; padding: 8px;
+      font-family: monospace; font-size: 0.78rem;
+      color: #94a3b8; margin-bottom: 8px;
+    }
+    .seq-item {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 2px 0; border-bottom: 1px solid #1e2130;
+    }
+    .seq-item:last-child { border-bottom: none; }
+    .seq-del { cursor: pointer; color: #ef4444; font-size: 0.9rem; }
+    .seq-controls { display: flex; gap: 6px; }
+
+    /* Log */
+    #log {
+      height: 420px; overflow-y: auto;
+      background: #0f1117; border: 1px solid #2d3148;
+      border-radius: 8px; padding: 10px 12px;
+      font-family: monospace; font-size: 0.78rem; line-height: 1.6;
+    }
+    .log-sent  { color: #60a5fa; }
+    .log-recv  { color: #4ade80; }
+    .log-error { color: #f87171; }
+    .log-info  { color: #94a3b8; }
+    .log-ts    { color: #475569; margin-right: 6px; }
+    .log-controls { display: flex; justify-content: flex-end; margin-bottom: 6px; }
+
+    .presets { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+    .divider { border: none; border-top: 1px solid #2d3148; margin: 14px 0; }
+    .right-col { display: flex; flex-direction: column; gap: 16px; }
+  </style>
 </head>
 <body>
-  <h2>BlockBot WebSocket Test</h2>
-  <button onclick="connect()">Connect</button>
-  <button onclick="disconnect()">Disconnect</button>
-  <br><br>
+  <h1>BlockBot Test Console — Backend Mode</h1>
 
-  <label>Channel (0-3): <input id="channel" type="number" value="0" min="0" max="3"></label><br><br>
-  <label>Angle: <input id="angle" type="number" value="90"></label><br><br>
-  <button onclick="sendMove()">Send Move</button>
-  <button onclick="sendWait()">Send Wait 1s</button>
-  <br><br>
+  <div class="grid">
+    <div style="display:flex;flex-direction:column;gap:16px;">
 
-  <div id="log" style="font-family:monospace; border:1px solid #ccc; padding:10px; height:200px; overflow-y:auto;"></div>
+      <!-- Connection -->
+      <div class="panel">
+        <h2>Connection</h2>
+        <div class="conn-row">
+          <div class="status-dot" id="dot"></div>
+          <input id="ip" type="text" value="localhost:8000" placeholder="host:port">
+          <button class="btn btn-blue" id="btn-connect" onclick="connect()">Connect</button>
+          <button class="btn btn-red" id="btn-disconnect" onclick="disconnect()" disabled>Disc.</button>
+        </div>
+        <div id="status-text">Not connected</div>
+        <hr class="divider">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <button class="btn btn-gray btn-sm" onclick="healthCheck()">GET /health</button>
+          <div id="health-result">—</div>
+        </div>
+      </div>
 
-  <script>
-    let ws = null;
+      <!-- Servo Channels -->
+      <div class="panel">
+        <h2>Servo Channels — sliders 0°–180°, safe limits enforced by backend</h2>
+        <div id="channels"></div>
+        <hr class="divider">
+        <h2 style="margin-bottom:10px;">Quick Presets</h2>
+        <div class="presets">
+          <button class="btn btn-gray btn-sm" onclick="applyPreset('home')">Home</button>
+          <button class="btn btn-gray btn-sm" onclick="applyPreset('reach')">Reach</button>
+          <button class="btn btn-gray btn-sm" onclick="applyPreset('park')">Park</button>
+          <button class="btn btn-gray btn-sm" onclick="sendAllServos()">Send All</button>
+        </div>
+      </div>
 
-    function log(msg) {
-      const div = document.getElementById('log');
-      div.innerHTML += msg + '<br>';
-      div.scrollTop = div.scrollHeight;
+      <!-- Wait -->
+      <div class="panel">
+        <h2>Wait Command</h2>
+        <div class="wait-row">
+          <input id="wait-sec" type="number" value="1" min="0.1" max="10" step="0.1">
+          <span style="font-size:0.82rem;color:#64748b;">seconds</span>
+          <button class="btn btn-amber btn-sm" onclick="sendWait()">Send Wait</button>
+        </div>
+      </div>
+
+      <!-- Sequence -->
+      <div class="panel">
+        <h2>Sequence Builder</h2>
+        <div id="seq-list"><span style="color:#475569">No commands queued.</span></div>
+        <div class="seq-controls">
+          <button class="btn btn-gray btn-sm" onclick="addCurrentToSeq()">+ Add Current</button>
+          <button class="btn btn-amber btn-sm" onclick="addWaitToSeq()">+ Wait</button>
+          <button class="btn btn-green btn-sm" onclick="runSequence()">Run Seq</button>
+          <button class="btn btn-gray btn-sm" onclick="clearSeq()">Clear</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right column: log -->
+    <div class="right-col">
+      <div class="panel" style="flex:1;">
+        <h2>Message Log</h2>
+        <div class="log-controls">
+          <button class="btn btn-gray btn-sm" onclick="clearLog()">Clear Log</button>
+        </div>
+        <div id="log"></div>
+      </div>
+    </div>
+  </div>
+
+<script>
+  // All sliders run 0–180. Safe limits are enforced by the backend validator.
+  // When the backend rejects an angle the channel card turns red with the error.
+  const CHANNELS = [
+    { id: 0, name: 'Base (S1 / MG996R)',  safeMin:  0, safeMax: 180, home: 90  },
+    { id: 1, name: 'Shoulder (S2 / MG90S)', safeMin: 65, safeMax: 125, home: 90  },
+    { id: 2, name: 'Elbow (S3 / MG90S)',    safeMin: 30, safeMax: 120, home: 75  },
+    { id: 3, name: 'Wrist (S4 / MG90S)',    safeMin: 90, safeMax: 150, home: 120 },
+  ];
+
+  const PRESETS = {
+    home:  [90, 90, 75, 120],
+    reach: [90, 70, 110, 95],
+    park:  [90, 120, 35, 148],
+  };
+
+  let ws = null;
+  let sequence  = [];
+  let pendingQueue = []; // tracks which channel each sent command belongs to
+
+  // ── Build channel sliders ──────────────────────────────────
+  const container = document.getElementById('channels');
+  CHANNELS.forEach(ch => {
+    container.innerHTML += `
+      <div class="channel" id="ch-wrap-${ch.id}">
+        <div class="channel-header">
+          <span class="channel-label">Ch ${ch.id} — ${ch.name}</span>
+          <span class="channel-badge">0°–180°</span>
+        </div>
+        <div class="slider-row">
+          <span style="font-size:0.7rem;color:#475569;">0°</span>
+          <input type="range" id="slider-${ch.id}" min="0" max="180" value="${ch.home}"
+            oninput="updateAngle(${ch.id})" onchange="sendMove(${ch.id})">
+          <span style="font-size:0.7rem;color:#475569;">180°</span>
+          <span class="angle-display" id="angle-${ch.id}">${ch.home}°</span>
+        </div>
+        <div class="channel-meta">
+          <span class="safe-hint">Safe range: ${ch.safeMin}°–${ch.safeMax}° (backend enforced)</span>
+          <span class="channel-error" id="err-${ch.id}"></span>
+        </div>
+      </div>`;
+  });
+
+  function updateAngle(ch) {
+    const v = document.getElementById(`slider-${ch}`).value;
+    document.getElementById(`angle-${ch}`).textContent = v + '°';
+  }
+
+  // ── Feedback per channel ───────────────────────────────────
+  function showError(ch, msg) {
+    const wrap = document.getElementById(`ch-wrap-${ch}`);
+    wrap.classList.add('has-error');
+    wrap.classList.remove('has-success');
+    document.getElementById(`err-${ch}`).textContent = '⚠ ' + msg;
+  }
+
+  function showSuccess(ch) {
+    const wrap = document.getElementById(`ch-wrap-${ch}`);
+    wrap.classList.remove('has-error');
+    wrap.classList.add('has-success');
+    document.getElementById(`err-${ch}`).textContent = '';
+    setTimeout(() => wrap.classList.remove('has-success'), 800);
+  }
+
+  function clearFeedback(ch) {
+    const wrap = document.getElementById(`ch-wrap-${ch}`);
+    wrap.classList.remove('has-error', 'has-success');
+    document.getElementById(`err-${ch}`).textContent = '';
+  }
+
+  // ── Log helpers ────────────────────────────────────────────
+  function ts() {
+    return new Date().toLocaleTimeString('en-US',
+      { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  }
+
+  function log(msg, cls = 'log-info') {
+    const div = document.getElementById('log');
+    div.innerHTML += `<div class="log-${cls}"><span class="log-ts">[${ts()}]</span>${escHtml(msg)}</div>`;
+    div.scrollTop = div.scrollHeight;
+  }
+
+  function escHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  function clearLog() { document.getElementById('log').innerHTML = ''; }
+
+  // ── Connection state ───────────────────────────────────────
+  function setStatus(state) {
+    const dot  = document.getElementById('dot');
+    const txt  = document.getElementById('status-text');
+    const btnC = document.getElementById('btn-connect');
+    const btnD = document.getElementById('btn-disconnect');
+    dot.className = 'status-dot';
+    if (state === 'connected') {
+      dot.classList.add('connected');
+      txt.textContent = 'Connected to backend';
+      btnC.disabled = true; btnD.disabled = false;
+    } else if (state === 'connecting') {
+      dot.classList.add('connecting');
+      txt.textContent = 'Connecting…';
+      btnC.disabled = true; btnD.disabled = true;
+    } else {
+      txt.textContent = 'Not connected';
+      btnC.disabled = false; btnD.disabled = true;
     }
+  }
 
-    function connect() {
-      ws = new WebSocket('ws://192.168.1.198:8080/ws');
-      ws.onopen = () => log('Connected');
-      ws.onclose = () => log('Disconnected');
-      ws.onerror = (e) => log('Error: ' + e);
-      ws.onmessage = (e) => log('Received: ' + e.data);
-    }
+  // ── WebSocket ──────────────────────────────────────────────
+  function connect() {
+    const addr = document.getElementById('ip').value.trim();
+    const url  = `ws://${addr}/ws`;
+    setStatus('connecting');
+    log(`Connecting to ${url}…`);
+    ws = new WebSocket(url);
 
-    function disconnect() {
-      if (ws) ws.close();
-    }
+    ws.onopen = () => {
+      setStatus('connected');
+      log('WebSocket open', 'recv');
+    };
 
-    function sendMove() {
-      if (!ws || ws.readyState !== WebSocket.OPEN) { log('Not connected'); return; }
-      const channel = parseInt(document.getElementById('channel').value);
-      const angle = parseInt(document.getElementById('angle').value);
-      const cmd = JSON.stringify({ cmd: 'move', channel, angle });
-      ws.send(cmd);
-      log('Sent: ' + cmd);
-    }
+    ws.onclose = () => {
+      setStatus('disconnected');
+      log('WebSocket closed', 'info');
+      ws = null;
+      pendingQueue = [];
+    };
 
-    function sendWait() {
-      if (!ws || ws.readyState !== WebSocket.OPEN) { log('Not connected'); return; }
-      const cmd = JSON.stringify({ cmd: 'wait', second: 1 });
-      ws.send(cmd);
-      log('Sent: ' + cmd);
+    ws.onerror = () => {
+      log('WebSocket error — is the backend running? (fastapi dev backend/main.py)', 'error');
+    };
+
+    ws.onmessage = e => {
+      log('← ' + e.data, 'recv');
+
+      // Parse the backend response and show feedback on the channel card
+      try {
+        const resp = JSON.parse(e.data);
+        const ch   = pendingQueue.shift(); // match to the command we sent
+
+        if (ch !== null && ch !== undefined) {
+          if (resp.ok === false) {
+            showError(ch, resp.error || 'rejected by backend');
+            log(`Ch${ch} rejected: ${resp.error}`, 'error');
+          } else {
+            showSuccess(ch);
+          }
+        }
+      } catch (_) {}
+    };
+  }
+
+  function disconnect() {
+    if (ws) ws.close();
+  }
+
+  // ── Send ───────────────────────────────────────────────────
+  function send(obj) {
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+      log('Not connected — command dropped', 'error');
+      return false;
     }
-  </script>
+    // Track which channel this command is for so we can match the response
+    pendingQueue.push(obj.cmd === 'move' ? obj.channel : null);
+    const s = JSON.stringify(obj);
+    ws.send(s);
+    log('→ ' + s, 'sent');
+    return true;
+  }
+
+  // ── Commands ───────────────────────────────────────────────
+  function sendMove(ch) {
+    const angle = parseInt(document.getElementById(`slider-${ch}`).value);
+    clearFeedback(ch);
+    send({ cmd: 'move', channel: ch, angle });
+  }
+
+  function sendWait() {
+    const sec = parseFloat(document.getElementById('wait-sec').value);
+    send({ cmd: 'wait', second: sec });
+  }
+
+  function sendAllServos() {
+    CHANNELS.forEach(ch => sendMove(ch.id));
+  }
+
+  // ── Presets ────────────────────────────────────────────────
+  function applyPreset(name) {
+    const angles = PRESETS[name];
+    if (!angles) return;
+    CHANNELS.forEach((ch, i) => {
+      document.getElementById(`slider-${ch.id}`).value = angles[i];
+      updateAngle(ch.id);
+    });
+    log(`Preset "${name}" — sending all channels…`);
+    sendAllServos();
+  }
+
+  // ── Health check ───────────────────────────────────────────
+  async function healthCheck() {
+    const addr = document.getElementById('ip').value.trim();
+    const url  = `http://${addr}/health`;
+    const el   = document.getElementById('health-result');
+    el.textContent = 'checking…'; el.style.color = '#64748b';
+    try {
+      const r = await fetch(url);
+      const j = await r.json();
+      el.textContent = JSON.stringify(j);
+      el.style.color = '#4ade80';
+      log(`Health: ${JSON.stringify(j)}`, 'recv');
+    } catch (e) {
+      el.textContent = 'failed';
+      el.style.color = '#f87171';
+      log(`Health check failed — is the backend running? (fastapi dev backend/main.py)`, 'error');
+    }
+  }
+
+  // ── Sequence ───────────────────────────────────────────────
+  function renderSeq() {
+    const el = document.getElementById('seq-list');
+    if (!sequence.length) {
+      el.innerHTML = '<span style="color:#475569">No commands queued.</span>';
+      return;
+    }
+    el.innerHTML = sequence.map((cmd, i) => {
+      const label = cmd.cmd === 'move'
+        ? `move ch${cmd.channel} → ${cmd.angle}°`
+        : `wait ${cmd.second}s`;
+      return `<div class="seq-item">
+        <span>${i+1}. ${label}</span>
+        <span class="seq-del" onclick="removeSeq(${i})">✕</span>
+      </div>`;
+    }).join('');
+  }
+
+  function addCurrentToSeq() {
+    CHANNELS.forEach(ch => {
+      const angle = parseInt(document.getElementById(`slider-${ch.id}`).value);
+      sequence.push({ cmd: 'move', channel: ch.id, angle });
+    });
+    renderSeq();
+  }
+
+  function addWaitToSeq() {
+    const sec = parseFloat(document.getElementById('wait-sec').value);
+    sequence.push({ cmd: 'wait', second: sec });
+    renderSeq();
+  }
+
+  function removeSeq(i) { sequence.splice(i, 1); renderSeq(); }
+  function clearSeq()   { sequence = []; renderSeq(); }
+
+  async function runSequence() {
+    if (!sequence.length) { log('Sequence is empty', 'info'); return; }
+    log(`Running sequence (${sequence.length} commands)…`);
+    for (const cmd of sequence) {
+      if (!send(cmd)) break;
+      if (cmd.cmd === 'wait') await new Promise(r => setTimeout(r, cmd.second * 1000));
+      else await new Promise(r => setTimeout(r, 80));
+    }
+    log('Sequence complete.');
+  }
+</script>
 </body>
 </html>
