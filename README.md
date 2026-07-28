@@ -8,11 +8,10 @@ BlockBot is an ESP32-based robot arm controlled via WiFi. Commands are sent as J
 - ESP32 firmware with WebSocket server (Microdot)
 - 4-servo arm control with safety limits enforced per servo
 - FastAPI relay backend for validated command relay
-- Browser test console with servo control sliders, presets, and sequence builder
 - Live joystick control via physical analog joysticks
 
 **In Development:**
-- Block-based visual programming editor
+- Block-based visual programming editor (Blockly-based, replaces the old slider test console — in progress)
 - On-screen touch joystick interface
 - Program save/load functionality
 
@@ -186,13 +185,15 @@ The backend is optional. You can connect directly to the ESP32 WebSocket if you 
 
 ### Prerequisites
 - Python 3.8+
-- FastAPI, Uvicorn, websockets (see `requirements.txt`)
+- FastAPI, websockets, pytest (see `tests/requirements.txt`)
 
 ### Steps
 
 1. **Install dependencies**:
    ```bash
+   cd tests
    pip install -r requirements.txt
+   cd ..
    ```
 
 2. **Update the ARM_WS address** in `backend/main.py` to match your ESP32's IP:
@@ -215,28 +216,31 @@ The backend is optional. You can connect directly to the ESP32 WebSocket if you 
 
 ## Testing and Control
 
-### Browser Test Console
+### Block Editor (Blockly-based, replaces the old test.html console)
 
-A comprehensive test page is included at `test.html`. It connects to the backend relay and provides:
-- Servo control sliders (0°–180°, with safe limits highlighted)
-- Preset positions (Home, Reach, Park)
-- Sequence builder (queue commands and run them in order)
-- Message log showing all sent/received commands
+The frontend is now a Blockly-based visual editor (`index.html` / `blocks.js` / `app.js`). It connects to the backend relay over WebSocket and provides:
+- Drag-and-drop blocks: `when Run clicked`, `move [joint] to [angle] degrees`, `wait [seconds] seconds`
+- Standard Logic, Loops, Math, Variables, and Functions block categories
+- A connection status indicator
+- Program auto-save/load via browser local storage
+
+Note: this editor is still in development — see "Project Status" above.
 
 #### Steps
 
 1. Start the backend relay (see "Running the Backend Relay" above).
 
-2. Serve the test page locally:
+2. Serve the frontend locally (don't open `index.html` directly as a `file://` path — serve it over HTTP):
    ```bash
-   python3 -m http.server 3000
+   cd frontend
+   python3 -m http.server 5500
    ```
 
-3. Open `http://localhost:3000/test.html` in your browser.
+3. Open `http://localhost:5500` in your browser.
 
-4. Enter `localhost:8000` and click **Connect**.
+4. The status indicator turns green once connected to the backend at `ws://localhost:8000/ws` (edit the `BACKEND` constant in `app.js` if your backend runs elsewhere).
 
-5. Use the sliders to control the servos. Commands are validated by the backend before being sent to the ESP32.
+5. Drag blocks into the workspace and press **Run**. Commands are validated by the backend before being sent to the ESP32.
 
 ### Direct WebSocket Testing
 
@@ -320,12 +324,13 @@ If you have physical joysticks wired to the ESP32:
 - The ESP32 WebSocket connection may have dropped. Try reconnecting from the test console.
 - Check the ESP32 power supply — servos drawing too much current can cause resets.
 
-### Browser Test Console
+### Block Editor
 
-**Problem: "Connection refused" when connecting**
+**Problem: "Connection refused" / status indicator stays red**
 - Verify the backend is running (`fastapi dev backend/main.py`).
-- Check that you've entered the correct backend address (e.g., `localhost:8000`).
-- If connecting from a different machine, use the machine's IP instead of `localhost`.
+- Check the `BACKEND` constant in `app.js` points to the correct backend address (e.g., `ws://localhost:8000/ws`).
+- If connecting from a different machine (e.g. an iPad), use the backend machine's LAN IP instead of `localhost`.
+- Make sure `index.html` is served over HTTP (`python3 -m http.server`), not opened as a `file://` path.
 
 ---
 
