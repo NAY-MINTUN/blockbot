@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1,
+             maximum-scale=1, user-scalable=no,
+             viewport-fit=cover"
+  >
+
+  <meta name="theme-color" content="#007EE9">
+
+  <title>BlockBot</title>
+
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="style.css?v=4">
+
+  <!-- Pin Blockly so future CDN updates do not unexpectedly break the UI. -->
+  <script src="https://unpkg.com/blockly@11.2.2/blockly_compressed.js"></script>
+  <script src="https://unpkg.com/blockly@11.2.2/blocks_compressed.js"></script>
+  <script src="https://unpkg.com/blockly@11.2.2/javascript_compressed.js"></script>
+  <script src="https://unpkg.com/blockly@11.2.2/msg/en.js"></script>
+</head>
+
+<body>
+  <header class="app-header">
+    <div class="brand" aria-label="BlockBot">
+      <img
+        class="brand-logo"
+        src="blockbot-logo.svg"
+        alt="BlockBot — Drag. Drop. Move."
+      >
+    </div>
+
+    <div class="app-actions">
+      <div class="save-state" id="saveState" aria-live="polite">Saved</div>
+      <div
+        id="status"
+        class="connection-status connection-status--connecting"
+        role="status"
+        aria-live="polite"
+      >
+        <span class="connection-dot" aria-hidden="true"></span>
+        <span id="statusText">Connecting...</span>
+      </div>
+
+      <button
+        id="newProgram"
+        class="button button--secondary"
+        type="button"
+      >
+        New
+      </button>
+
+      <button
+        id="run"
+        class="button button--primary"
+        type="button"
+        disabled
+      >
+        <span class="run-icon" aria-hidden="true"></span>
+        <span id="runText">Run</span>
+      </button>
+    </div>
+  </header>
+
+  <main class="editor">
+    <div id="workspace" aria-label="BlockBot programming workspace"></div>
+    <aside id="coach" class="coach" aria-label="Getting started">
+      <button id="coachClose" class="coach-close" type="button" aria-label="Dismiss tips">×</button>
+      <div class="coach-eyebrow">Quick start</div>
+      <div class="coach-title">Build it. Run it. Watch it move.</div>
+      <ol>
+        <li>Open <strong>Robot</strong></li>
+        <li>Snap blocks under the orange start block</li>
+        <li>Press <strong>Run</strong></li>
+      </ol>
+    </aside>
+  </main>
+
+  <div id="toast" class="toast" role="alert" aria-live="assertive"></div>
+
+  <script src="blocks.js?v=3"></script>
+  <script src="app.js?v=3"></script>
+</body>
+</html>
