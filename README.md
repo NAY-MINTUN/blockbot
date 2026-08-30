@@ -1,6 +1,13 @@
 # BlockBot
 
-BlockBot is an ESP32-based robot arm controlled via WiFi. Commands are sent as JSON over WebSocket to move servos, with built-in safety limits that prevent the arm from damaging itself. The current implementation includes a WebSocket server on the ESP32, a FastAPI relay backend for command validation, and a browser-based test console for manual control.
+BlockBot is a classroom prototype for controlling an ESP32-based robot arm over
+Wi-Fi. Commands are sent as JSON over WebSocket to move servos, with safety
+limits that prevent the arm from moving beyond its tested range. The prototype
+includes a WebSocket server on the ESP32, a local FastAPI relay for validation,
+and a browser-based Blockly editor.
+
+The project is intentionally designed for supervised local development and
+classroom demonstrations on one trusted Wi-Fi network.
 
 ## Project Status
 
@@ -8,12 +15,13 @@ BlockBot is an ESP32-based robot arm controlled via WiFi. Commands are sent as J
 - ESP32 firmware with WebSocket server (Microdot)
 - 4-servo arm control with safety limits enforced per servo
 - FastAPI relay backend for validated command relay
+- Blockly-based visual programming editor
+- Local browser program auto-save
 - Live joystick control via physical analog joysticks
 
 **In Development:**
-- Block-based visual programming editor (Blockly-based, replaces the old slider test console — in progress)
 - On-screen touch joystick interface
-- Program save/load functionality
+- Named program save/load functionality
 
 ---
 
@@ -92,11 +100,14 @@ These limits were determined by physical testing and are enforced by the firmwar
 
 ### Steps
 
-1. **Configure WiFi credentials** in `firmware/main.py`:
+1. **Create the private WiFi config** from the example:
    ```python
+   # firmware/config.py
    WIFI_SSID = 'Your_Network'
    WIFI_PASSWORD = 'Your_Password'
    ```
+   `firmware/config.py` is ignored by Git. Upload it to the ESP32 with the
+   other firmware files.
 
 2. **Upload these files to the ESP32** via Thonny:
    - `pca9685.py` (PCA9685 I2C driver)
@@ -185,31 +196,31 @@ The backend is optional. You can connect directly to the ESP32 WebSocket if you 
 
 ### Prerequisites
 - Python 3.8+
-- FastAPI, websockets, pytest (see `tests/requirements.txt`)
+- FastAPI and websockets (installed from `requirements.txt`)
 
 ### Steps
 
-1. **Install dependencies**:
+1. **Install dependencies** from the project root:
    ```bash
-   cd tests
+   python3 -m venv .venv
+   source .venv/bin/activate
    pip install -r requirements.txt
-   cd ..
    ```
 
-2. **Update the ARM_WS address** in `backend/main.py` to match your ESP32's IP:
-   ```python
-   ARM_WS = 'ws://192.168.1.XXX:8080/ws'
-   ```
-
-3. **Start the backend**:
+2. **Start the app**, setting `ARM_WS` to the ESP32 address:
    ```bash
-   fastapi dev backend/main.py
+   ARM_WS=ws://192.168.1.XXX:8080/ws uvicorn backend.main:app --reload
    ```
-   The backend will run at `ws://localhost:8000/ws`.
+   The UI and backend will run together at `http://localhost:8000`.
 
-4. **Verify connectivity**:
+3. **Verify connectivity**:
    ```bash
    curl http://localhost:8000/health
+   ```
+
+4. **Run the automated checks**:
+   ```bash
+   python -m unittest discover -s tests -v
    ```
 
 ---
@@ -224,23 +235,15 @@ The frontend is now a Blockly-based visual editor (`index.html` / `blocks.js` / 
 - A connection status indicator
 - Program auto-save/load via browser local storage
 
-Note: this editor is still in development — see "Project Status" above.
+Note: this editor is part of the prototype and is intended for supervised local
+testing.
 
 #### Steps
 
-1. Start the backend relay (see "Running the Backend Relay" above).
-
-2. Serve the frontend locally (don't open `index.html` directly as a `file://` path — serve it over HTTP):
-   ```bash
-   cd frontend
-   python3 -m http.server 5500
-   ```
-
-3. Open `http://localhost:5500` in your browser.
-
-4. The status indicator turns green once connected to the backend at `ws://localhost:8000/ws` (edit the `BACKEND` constant in `app.js` if your backend runs elsewhere).
-
-5. Drag blocks into the workspace and press **Run**. Commands are validated by the backend before being sent to the ESP32.
+1. Start the BlockBot app (see "Running the Backend Relay" above).
+2. Open `http://localhost:8000` in your browser.
+3. Drag blocks into the workspace and press **Run**. Commands run in order and
+   are validated before being sent to the ESP32.
 
 ### Direct WebSocket Testing
 
@@ -302,7 +305,7 @@ If you have physical joysticks wired to the ESP32:
 **Problem: "Cannot connect to ESP32"**
 - Verify the ESP32 is on the same WiFi network as your computer.
 - Check the IP address in Thonny's shell — it should print when the ESP32 boots.
-- Ensure WiFi credentials in `firmware/main.py` are correct.
+- Ensure WiFi credentials in `firmware/config.py` are correct.
 
 **Problem: "Servos not responding"**
 - Check the I2C wiring between ESP32 and PCA9685.
@@ -315,22 +318,20 @@ If you have physical joysticks wired to the ESP32:
 
 ### Backend Relay
 
-**Problem: "Cannot reach arm" error in test console**
-- Verify `ARM_WS` in `backend/main.py` points to your ESP32's IP and port.
+**Problem: "Cannot reach the robot" message in the block editor**
+- Verify the `ARM_WS` environment variable points to your ESP32's IP and port.
 - Ensure the ESP32 WebSocket server is running.
 - Check that your computer and ESP32 are on the same WiFi network.
 
 **Problem: "Arm connection lost" during command**
-- The ESP32 WebSocket connection may have dropped. Try reconnecting from the test console.
+- The ESP32 WebSocket connection may have dropped. Reload the block editor.
 - Check the ESP32 power supply — servos drawing too much current can cause resets.
 
 ### Block Editor
 
 **Problem: "Connection refused" / status indicator stays red**
-- Verify the backend is running (`fastapi dev backend/main.py`).
-- Check the `BACKEND` constant in `app.js` points to the correct backend address (e.g., `ws://localhost:8000/ws`).
-- If connecting from a different machine (e.g. an iPad), use the backend machine's LAN IP instead of `localhost`.
-- Make sure `index.html` is served over HTTP (`python3 -m http.server`), not opened as a `file://` path.
+- Verify the app is running (`uvicorn backend.main:app --reload`).
+- If connecting from an iPad, open the backend machine's LAN IP instead of `localhost`.
 
 ---
 
@@ -346,8 +347,7 @@ If you have physical joysticks wired to the ESP32:
 
 ## What Comes Next
 
-- **Block-based visual editor**: Scratch-style blocks for move, wait, repeat, if/else, variables, and functions.
 - **On-screen touch controls**: Touch-based joysticks and buttons for mobile/tablet.
-- **Program persistence**: Save and load programs on the device.
-- **Auto-reconnect**: Automatic reconnection if WiFi or WebSocket drops.
+- **Named programs**: Save, rename, and load multiple programs.
+- **Emergency stop**: Cancel a running program and stop motion safely.
 - **Mobile app**: Native iOS/Android interface.

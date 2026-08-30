@@ -5,6 +5,7 @@
 __pycache__/
 *.pyc
 venv/
+.pytest_cache/
 .venv/
 
 # OS
@@ -12,3 +13,4 @@ venv/
 
 # Env / secrets
 .env
+firmware/config.py

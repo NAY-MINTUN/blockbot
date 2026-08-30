@@ -2,8 +2,7 @@ import gc
 import time
 import network
 
-WIFI_SSID = 'Ploy_2.4G'
-WIFI_PASSWORD = 'ploy1234'
+from config import WIFI_PASSWORD, WIFI_SSID
 
 # Connect WiFi before importing Microdot so the driver
 # can allocate its rx buffers while heap is still free.

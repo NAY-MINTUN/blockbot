@@ -1,52 +1,78 @@
 import json
+import os
+from collections import deque
+from pathlib import Path
+
 import websockets
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from validator import check
+from fastapi.staticfiles import StaticFiles
 
-ARM_WS = 'ws://192.168.1.198:8080/ws'
-log: list[dict] = []
+from backend.validator import check
 
-app = FastAPI()
+
+ARM_WS = os.getenv('ARM_WS', 'ws://192.168.1.198:8080/ws')
+FRONTEND_DIR = Path(__file__).resolve().parent.parent / 'frontend'
+log: deque[dict] = deque(maxlen=100)
+
+app = FastAPI(title='BlockBot')
+
 
 @app.get('/health')
 async def health():
     return {'status': 'ok'}
 
-@app.get('/logs')
-async def logs():
-    return log
 
 @app.websocket('/ws')
 async def relay(browser: WebSocket):
     await browser.accept()
 
-    # Try to connect to the arm first — tell the browser if it's unreachable
     try:
-        arm_conn = await websockets.connect(ARM_WS)
-    except Exception as e:
-        await browser.send_json({'ok': False, 'error': f'Cannot reach arm: {e}'})
-        await browser.close()
+        arm_conn = await websockets.connect(ARM_WS, open_timeout=5)
+    except Exception:
+        try:
+            await browser.send_json({
+                'ok': False,
+                'error': 'Cannot reach the robot. Check its power, Wi-Fi, and ARM_WS address.'
+            })
+            await browser.close()
+        except Exception:
+            pass
         return
 
     try:
         while True:
             command = await browser.receive_json()
+            if not isinstance(command, dict):
+                await browser.send_json({'ok': False, 'error': 'Command must be an object.'})
+                continue
 
-            if command.get('cmd') == 'move':
-                ok, message = check(command['channel'], command['angle'])
-                if not ok:
-                    await browser.send_json({'ok': False, 'error': message})
-                    continue
+            if command.get('cmd') != 'move':
+                await browser.send_json({'ok': False, 'error': 'Unknown command.'})
+                continue
+
+            ok, message = check(command.get('channel'), command.get('angle'))
+            if not ok:
+                await browser.send_json({'ok': False, 'error': message})
+                continue
 
             try:
                 await arm_conn.send(json.dumps(command))
                 log.append({'type': 'sent', 'command': command})
                 await browser.send_json({'ok': True})
-            except Exception as e:
-                await browser.send_json({'ok': False, 'error': f'Arm connection lost: {e}'})
+            except Exception:
+                try:
+                    await browser.send_json({'ok': False, 'error': 'The robot connection was lost.'})
+                except Exception:
+                    pass
                 break
 
     except WebSocketDisconnect:
         pass
     finally:
-        await arm_conn.close()
+        try:
+            await arm_conn.close()
+        except Exception:
+            pass
+
+
+app.mount('/', StaticFiles(directory=FRONTEND_DIR, html=True), name='frontend')
