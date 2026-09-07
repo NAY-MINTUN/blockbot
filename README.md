@@ -70,10 +70,10 @@ classroom demonstrations on one trusted Wi-Fi network.
 
 | GPIO Pin | Joystick Pin | Controls        |
 |----------|-------------|-----------------|
-| 34       | J1 VRx      | Base rotation   |
-| 35       | J1 VRy      | In/Out arm      |
-| 32       | J2 VRx      | Up/Down arm     |
-| 33       | J2 VRy      | Gripper         |
+| 32       | JY1 VRx     | Base rotation   |
+| 33       | JY1 VRy     | In/Out arm      |
+| 34       | JY2 VRx     | Up/Down arm     |
+| 35       | JY2 VRy     | Gripper         |
 
 Connect all joystick VCC pins to 3.3V and all GND pins to GND.
 
@@ -112,6 +112,7 @@ These limits were determined by physical testing and are enforced by the firmwar
 2. **Upload these files to the ESP32** via Thonny:
    - `pca9685.py` (PCA9685 I2C driver)
    - `servo.py` (Arm class with safety limits)
+   - `joystick.py` (non-blocking physical joystick control)
    - `main.py` (WebSocket server)
    - `microdot/` (Microdot web framework and WebSocket support)
 
@@ -267,11 +268,10 @@ asyncio.run(test())
 
 ### Live Joystick Control
 
-If you have physical joysticks wired to the ESP32:
-
-1. Open `firmware/joystick_test.py` in Thonny.
-2. Press **Run** (F5).
-3. Push the joysticks to move the arm. Press **Ctrl-C** to stop.
+Physical joystick control starts automatically with `firmware/main.py` and runs
+alongside WebSocket control. Keep both joysticks released while the ESP32 boots
+so their centre positions can be calibrated. Use `firmware/joystick_test.py`
+only when testing the joysticks without Wi-Fi or browser control.
 
 ---
 
@@ -282,6 +282,7 @@ If you have physical joysticks wired to the ESP32:
 | `main.py` | WebSocket server, entry point |
 | `servo.py` | `Arm` class — moves servos and enforces safety limits |
 | `pca9685.py` | Low-level I2C driver for the PCA9685 servo board |
+| `joystick.py` | Non-blocking two-joystick controller |
 | `joystick_test.py` | Live joystick control utility |
 | `test_limits.py` | Calibration tool for finding safe angle limits |
 | `helpers.py` | MicroPython compatibility helpers |

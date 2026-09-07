@@ -25,8 +25,10 @@ import json
 from microdot import Microdot
 from microdot.websocket import with_websocket
 from servo import Arm
+from joystick import JoystickController
 
 arm = Arm()
+joysticks = JoystickController(arm)
 app = Microdot()
 
 @app.get('/health')
@@ -52,8 +54,17 @@ async def ws(request, ws):
         print('error:', e)
     print('client disconnected')
 
+async def main():
+    # Establish known, safe software and physical positions before accepting
+    # either joystick or WebSocket movement commands.
+    arm.home()
+    await joysticks.calibrate()
+    asyncio.create_task(joysticks.run())
+    await app.start_server(host='0.0.0.0', port=8080)
+
+
 try:
-    app.run(host='0.0.0.0', port=8080)
+    asyncio.run(main())
 except OSError:
     import machine
     machine.reset()

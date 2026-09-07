@@ -1,11 +1,11 @@
 """
 Joystick limit tester for BlockBot arm.
 
-Wiring (change pin numbers below to match yours):
-  J1 VRx → GPIO 34   (Base,     ch0 MG996R)
-  J1 VRy → GPIO 35   (Shoulder, ch1 MG90S)
-  J2 VRx → GPIO 32   (Elbow,    ch2 MG90S)
-  J2 VRy → GPIO 33   (Wrist,    ch3 MG90S)
+Wiring:
+  JY1 VRx → GPIO 32   (Base,     ch0 MG996R)
+  JY1 VRy → GPIO 33   (Shoulder, ch1 MG90S)
+  JY2 VRx → GPIO 34   (Elbow,    ch2 MG90S)
+  JY2 VRy → GPIO 35   (Gripper,  ch3 MG90S)
   All GND → GND,  All VCC → 3.3 V
 
 Run: mpremote run firmware/joystick_test.py
@@ -14,13 +14,13 @@ Stop: Ctrl-C  (servos hold last position)
 
 from machine import ADC, Pin
 import time
-from servo import Arm
+from servo import Arm, LIMITS
 
 # ── Pin config ───────────────────────────────────────────────────────
-J1_X = 34   # Base
-J1_Y = 35   # Shoulder
-J2_X = 32   # Elbow
-J2_Y = 33   # Wrist
+J1_X = 32   # Base
+J1_Y = 33   # Shoulder
+J2_X = 34   # Elbow
+J2_Y = 35   # Gripper
 # ────────────────────────────────────────────────────────────────────
 
 # ── Tuning ───────────────────────────────────────────────────────────
@@ -30,15 +30,7 @@ TICK_MS     = 50     # loop period in ms  (50 ms → 20 updates/sec)
 PRINT_EVERY = 10     # print status every N ticks
 # ────────────────────────────────────────────────────────────────────
 
-# Per-channel safe limits — must match servo.py LIMITS
-LIMITS = {
-    0: (  0, 180),
-    1: ( 25, 125),
-    2: ( 50, 140),
-    3: ( 93, 150),
-}
-
-NAMES  = {0: "Base", 1: "Shoulder", 2: "Elbow", 3: "Wrist"}
+NAMES  = {0: "Base", 1: "Shoulder", 2: "Elbow", 3: "Gripper"}
 INVERT = {0: False, 1: True, 2: False, 3: False}
 
 

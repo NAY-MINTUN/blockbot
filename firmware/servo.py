@@ -16,15 +16,29 @@ LIMITS = {
     3: ( 90, 150),
 }
 
+HOME_ANGLES = {
+    channel: (limits[0] + limits[1]) // 2
+    for channel, limits in LIMITS.items()
+}
+
 class Arm:
     def __init__(self):
         i2c = I2C(0, scl=Pin(SCL_PIN), sda=Pin(SDA_PIN), freq=400000)
         self.driver = PCA9685(i2c)
         self.driver.freq(SERVO_HZ)
+        self.angles = dict(HOME_ANGLES)
 
     def move(self, channel, angle):
         lo, hi = LIMITS.get(channel, (0, 180))
         angle = max(lo, min(hi, angle))
         pulse = MIN_PULSE + int((MAX_PULSE - MIN_PULSE) * angle / 180)
         self.driver.channel(channel, pulse)
-        
+        self.angles[channel] = angle
+        return angle
+
+    def angle(self, channel):
+        return self.angles[channel]
+
+    def home(self):
+        for channel in range(4):
+            self.move(channel, HOME_ANGLES[channel])
