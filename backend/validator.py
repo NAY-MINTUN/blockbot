@@ -1,4 +1,10 @@
-LIMITS = {0: (0, 180), 1: (65, 125), 2: (30, 120), 3: (90, 150)}
+LIMITS = {0: (0, 180), 1: (40, 125), 2: (30, 130), 3: (90, 150)}
+JOINT_NAMES = {
+    0: 'Base',
+    1: 'In/Out',
+    2: 'Up/Down',
+    3: 'Gripper',
+}
 
 def check(channel, angle):
     if isinstance(channel, bool) or not isinstance(channel, int):
@@ -8,6 +14,13 @@ def check(channel, angle):
     if isinstance(angle, bool) or not isinstance(angle, (int, float)):
         return False, 'angle must be a number'
     low, high = LIMITS[channel]
-    if not low <= angle <= high:
-        return False, f'angle must be between {low} and {high} degrees'
+    joint = JOINT_NAMES[channel]
+    if angle < low:
+        return False, (
+            f'{joint} joint angle {angle}° is below its minimum limit of {low}°.'
+        )
+    if angle > high:
+        return False, (
+            f'{joint} joint angle {angle}° exceeds its maximum limit of {high}°.'
+        )
     return True, 'ok'

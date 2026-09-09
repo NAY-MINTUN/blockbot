@@ -28,8 +28,28 @@ from servo import Arm
 from joystick import JoystickController
 
 arm = Arm()
-joysticks = JoystickController(arm)
 app = Microdot()
+clients = []
+
+
+async def send_positions(positions=None, client=None):
+    positions = positions or arm.positions()
+    payload = json.dumps({'type': 'positions', 'angles': positions})
+    targets = [client] if client else clients[:]
+    stale = []
+
+    for target in targets:
+        try:
+            await target.send(payload)
+        except Exception:
+            stale.append(target)
+
+    for target in stale:
+        if target in clients:
+            clients.remove(target)
+
+
+joysticks = JoystickController(arm, on_positions=send_positions)
 
 @app.get('/health')
 async def health(request):
@@ -39,7 +59,9 @@ async def health(request):
 @with_websocket
 async def ws(request, ws):
     print('client connected')
+    clients.append(ws)
     try:
+        await send_positions(client=ws)
         while True:
             data = await ws.receive()
             if data is None:
@@ -48,10 +70,14 @@ async def ws(request, ws):
             print('got:', command)
             if command['cmd'] == 'move':
                 arm.move(command['channel'], command['angle'])
+                await send_positions()
             elif command['cmd'] == 'wait':
                 await asyncio.sleep(command['second'])
     except Exception as e:
         print('error:', e)
+    finally:
+        if ws in clients:
+            clients.remove(ws)
     print('client disconnected')
 
 async def main():

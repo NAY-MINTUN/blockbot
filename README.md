@@ -1,13 +1,15 @@
 # BlockBot
 
-BlockBot is a classroom prototype for controlling an ESP32-based robot arm over
-Wi-Fi. Commands are sent as JSON over WebSocket to move servos, with safety
-limits that prevent the arm from moving beyond its tested range. The prototype
-includes a WebSocket server on the ESP32, a local FastAPI relay for validation,
-and a browser-based Blockly editor.
+BlockBot is an educational robot-arm system controlled through a browser-based
+Blockly editor or two physical joysticks. The ESP32 receives JSON commands over
+WebSocket and drives four servos through a PCA9685 board. Safety limits are
+enforced in both the FastAPI relay and the ESP32 firmware.
 
-The project is intentionally designed for supervised local development and
-classroom demonstrations on one trusted Wi-Fi network.
+The robot hardware and FastAPI relay operate on the same trusted Wi-Fi network.
+For a supervised public demonstration, the relay can be temporarily exposed
+through a secure HTTPS/WebSocket tunnel such as ngrok. The public endpoint must
+be stopped after the demonstration because application-level authentication is
+not implemented yet.
 
 ## Project Status
 
@@ -17,7 +19,10 @@ classroom demonstrations on one trusted Wi-Fi network.
 - FastAPI relay backend for validated command relay
 - Blockly-based visual programming editor
 - Local browser program auto-save
-- Live joystick control via physical analog joysticks
+- Non-blocking control from two physical analog joysticks
+- Automatic joystick centre calibration at startup
+- Live commanded-angle display in the browser and Thonny console
+- Temporary public demonstrations through an HTTPS/WebSocket tunnel
 
 **In Development:**
 - On-screen touch joystick interface
@@ -86,8 +91,8 @@ These limits were determined by physical testing and are enforced by the firmwar
 | Channel | Joint            | Servo  | Min Angle | Max Angle |
 |---------|------------------|--------|-----------|-----------|
 | 0       | Base             | MG996R | 0°        | 180°      |
-| 1       | In/Out Arm       | MG90S  | 65°       | 125°      |
-| 2       | Up/Down Arm      | MG90S  | 30°       | 120°      |
+| 1       | In/Out Arm       | MG90S  | 40°       | 125°      |
+| 2       | Up/Down Arm      | MG90S  | 30°       | 130°      |
 | 3       | Gripper          | MG90S  | 90°       | 150°      |
 
 ---
@@ -173,18 +178,23 @@ Send each JSON object as a separate WebSocket message:
 
 ## System Architecture
 
-BlockBot uses a 3-tier architecture:
+BlockBot uses a three-tier network architecture with a second, local input path
+for the physical joysticks:
 
 ```
-[Browser]
-    ↓ WebSocket
-[Backend (FastAPI)]
-    ↓ WebSocket
-[ESP32 Firmware (Microdot)]
-    ↓ I2C
-[PCA9685 Servo Driver]
-    ↓
-[Servos]
+[Browser / Blockly]
+        │ WebSocket
+        ▼
+[FastAPI validation relay]
+        │ WebSocket over local Wi-Fi
+        ▼
+[ESP32 / Microdot] ◀── [Two physical joysticks]
+        │ I2C
+        ▼
+[PCA9685 servo driver]
+        │ PWM
+        ▼
+[Four servos]
 ```
 
 The backend relay validates all commands before forwarding them to the ESP32, providing an extra layer of safety and logging.
@@ -193,7 +203,9 @@ The backend relay validates all commands before forwarding them to the ESP32, pr
 
 ## Running the Backend Relay
 
-The backend is optional. You can connect directly to the ESP32 WebSocket if you prefer, but the backend provides command validation and logging.
+The Blockly interface requires the backend relay. A developer can connect a
+separate WebSocket client directly to the ESP32 for testing, but doing so skips
+the backend validation layer.
 
 ### Prerequisites
 - Python 3.8+
@@ -208,9 +220,10 @@ The backend is optional. You can connect directly to the ESP32 WebSocket if you 
    pip install -r requirements.txt
    ```
 
-2. **Start the app**, setting `ARM_WS` to the ESP32 address:
+2. **Start the app**, setting `ARM_WS` to the ESP32 address printed in Thonny:
    ```bash
-   ARM_WS=ws://192.168.1.XXX:8080/ws uvicorn backend.main:app --reload
+   ARM_WS=ws://192.168.1.XXX:8080/ws \
+   uvicorn backend.main:app --host 127.0.0.1 --port 8000
    ```
    The UI and backend will run together at `http://localhost:8000`.
 
@@ -273,6 +286,26 @@ alongside WebSocket control. Keep both joysticks released while the ESP32 boots
 so their centre positions can be calibrated. Use `firmware/joystick_test.py`
 only when testing the joysticks without Wi-Fi or browser control.
 
+At startup, the firmware moves every joint to the midpoint of its safe range.
+Keep people and objects clear of the arm before applying power.
+
+| Axis | GPIO | Joint | Channel |
+|------|------|-------|---------|
+| JY1 VRx | 32 | Base rotation | 0 |
+| JY1 VRy | 33 | In/Out arm | 1 |
+| JY2 VRx | 34 | Up/Down arm | 2 |
+| JY2 VRy | 35 | Gripper | 3 |
+
+The integrated controller samples every 50 ms, ignores small readings around
+the calibrated centre, and moves by up to 3 degrees per sample. Direction,
+dead-zone, speed, and timing settings are defined near the top of
+`firmware/joystick.py`.
+
+While a joystick or Blockly program moves the arm, the ESP32 publishes the four
+latest commanded angles to connected browsers. These are software command
+positions, not measurements from physical position sensors. The firmware also
+prints the positions in the Thonny console while joystick movement is active.
+
 ---
 
 ## Firmware Files
@@ -284,7 +317,6 @@ only when testing the joysticks without Wi-Fi or browser control.
 | `pca9685.py` | Low-level I2C driver for the PCA9685 servo board |
 | `joystick.py` | Non-blocking two-joystick controller |
 | `joystick_test.py` | Live joystick control utility |
-| `test_limits.py` | Calibration tool for finding safe angle limits |
 | `helpers.py` | MicroPython compatibility helpers |
 | `microdot/` | Embedded Microdot web framework and WebSocket support |
 
@@ -338,11 +370,32 @@ only when testing the joysticks without Wi-Fi or browser control.
 
 ## Development Notes
 
-- **Servo pulse width range**: 110–500 microseconds (configured in `servo.py`).
+- **PCA9685 pulse counts**: 110–500 at 50 Hz (configured in `servo.py`).
 - **Servo frequency**: 50 Hz (standard for hobby servos).
 - **Each joint has a different safe range** because of physical constraints. These were found by testing and are stored in `LIMITS` in both `servo.py` (firmware) and `validator.py` (backend).
 - **The firmware enforces limits** to prevent damage even if invalid commands are sent.
 - **WiFi is initialized before importing Microdot** to avoid heap fragmentation (see comment in `main.py`).
+
+---
+
+## Operational Safety
+
+- Always use a separate regulated 5 V supply for the servos.
+- Connect the ESP32, PCA9685, and servo power-supply grounds together.
+- Keep the arm clear when it powers on because startup homing causes movement.
+- Test newly calibrated limits at low speed before a public demonstration.
+- Do not hold a joystick while a Blockly program is running; both controls are
+  active and the most recent command determines the joint position.
+- Supervise the robot whenever servo power is connected.
+- Stop any public tunnel immediately after the demonstration.
+
+## Current Limitations
+
+- There is no emergency-stop button yet.
+- There is no controller lock between Blockly and physical joystick input.
+- Public WebSocket connections do not yet require an application token.
+- The ESP32 waits for Wi-Fi before joystick control starts.
+- Browser programs are stored only in that browser's local storage.
 
 ---
 

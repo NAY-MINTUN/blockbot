@@ -1,3 +1,4 @@
+import asyncio
 import json
 import os
 from collections import deque
@@ -39,36 +40,69 @@ async def relay(browser: WebSocket):
             pass
         return
 
-    try:
+    browser_send_lock = asyncio.Lock()
+    tasks = []
+
+    async def send_browser(message):
+        async with browser_send_lock:
+            await browser.send_json(message)
+
+    async def browser_to_arm():
         while True:
             command = await browser.receive_json()
             if not isinstance(command, dict):
-                await browser.send_json({'ok': False, 'error': 'Command must be an object.'})
+                await send_browser({'ok': False, 'error': 'Command must be an object.'})
                 continue
 
             if command.get('cmd') != 'move':
-                await browser.send_json({'ok': False, 'error': 'Unknown command.'})
+                await send_browser({'ok': False, 'error': 'Unknown command.'})
                 continue
 
             ok, message = check(command.get('channel'), command.get('angle'))
             if not ok:
-                await browser.send_json({'ok': False, 'error': message})
+                await send_browser({'ok': False, 'error': message})
                 continue
 
-            try:
-                await arm_conn.send(json.dumps(command))
-                log.append({'type': 'sent', 'command': command})
-                await browser.send_json({'ok': True})
-            except Exception:
-                try:
-                    await browser.send_json({'ok': False, 'error': 'The robot connection was lost.'})
-                except Exception:
-                    pass
-                break
+            await arm_conn.send(json.dumps(command))
+            log.append({'type': 'sent', 'command': command})
+            await send_browser({'ok': True})
 
+    async def arm_to_browser():
+        while True:
+            data = await arm_conn.recv()
+            message = json.loads(data)
+            if message.get('type') == 'positions':
+                await send_browser(message)
+
+    try:
+        tasks = [
+            asyncio.create_task(browser_to_arm()),
+            asyncio.create_task(arm_to_browser()),
+        ]
+        done, _pending = await asyncio.wait(
+            tasks, return_when=asyncio.FIRST_COMPLETED
+        )
+        for task in done:
+            if task.cancelled():
+                continue
+            error = task.exception()
+            if error:
+                raise error
     except WebSocketDisconnect:
         pass
+    except Exception:
+        try:
+            await send_browser({
+                'ok': False,
+                'error': 'The robot connection was lost.'
+            })
+        except Exception:
+            pass
     finally:
+        for task in tasks:
+            task.cancel()
+        if tasks:
+            await asyncio.gather(*tasks, return_exceptions=True)
         try:
             await arm_conn.close()
         except Exception:

@@ -49,6 +49,8 @@ const statusText = document.getElementById('statusText');
 const runButton = document.getElementById('run');
 const newButton = document.getElementById('newProgram');
 const toast = document.getElementById('toast');
+const servoPositionElements = [0, 1, 2, 3]
+  .map(channel => document.getElementById(`servoPosition${channel}`));
 
 let socket;
 let reconnectTimer;
@@ -78,14 +80,22 @@ function setStatus(state, detail = '') {
   runButton.disabled = state !== 'connected' || running;
 }
 
+function updateServoPositions(angles) {
+  if (!Array.isArray(angles) || angles.length !== servoPositionElements.length) return;
+  angles.forEach((angle, channel) => {
+    if (typeof angle === 'number') {
+      servoPositionElements[channel].textContent = `${Math.round(angle)}°`;
+    }
+  });
+}
+
 function connect() {
   window.clearTimeout(reconnectTimer);
   setStatus(reconnectAttempt === 0 ? 'connecting' : 'offline', 'Trying to reconnect…');
   socket = new WebSocket(backendUrl);
 
   socket.onopen = () => {
-    reconnectAttempt = 0;
-    setStatus('connected');
+    setStatus('connecting', 'Checking the robot connection…');
   };
 
   socket.onclose = () => {
@@ -106,6 +116,13 @@ function connect() {
     try {
       message = JSON.parse(event.data);
     } catch {
+      return;
+    }
+
+    if (message.type === 'positions') {
+      reconnectAttempt = 0;
+      setStatus('connected');
+      updateServoPositions(message.angles);
       return;
     }
 

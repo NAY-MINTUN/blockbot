@@ -11,8 +11,8 @@ MAX_PULSE = 500
 # S1=ch0 (MG996R base), S2–S4=ch1–3 (MG90S).
 LIMITS = {
     0: (  0, 180),
-    1: ( 65, 125),
-    2: ( 30, 120),
+    1: ( 40, 125),
+    2: ( 30, 130),
     3: ( 90, 150),
 }
 
@@ -38,6 +38,9 @@ class Arm:
 
     def angle(self, channel):
         return self.angles[channel]
+
+    def positions(self):
+        return [self.angles[channel] for channel in range(4)]
 
     def home(self):
         for channel in range(4):

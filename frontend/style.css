@@ -18,8 +18,6 @@
 
   --header-height: 76px;
   --font-brand: ui-rounded, "Avenir Next", Arial, sans-serif;
-  --shadow-small: 0 2px 8px rgb(1 65 150 / 8%);
-  --shadow-button: 0 5px 14px rgb(0 126 233 / 24%);
 }
 
 * {
@@ -66,21 +64,27 @@ body {
 
   background: var(--white);
   border-bottom: 3px solid var(--brand-blue);
-  box-shadow: var(--shadow-small);
 }
 
 .brand {
   display: flex;
   align-items: center;
+  gap: 10px;
   min-width: 0;
 }
 
 .brand-logo {
   display: block;
-  width: 178px;
-  height: 56px;
+  height: 52px;
   object-fit: contain;
-  object-position: left center;
+}
+
+.brand-logo--square {
+  width: 52px;
+}
+
+.brand-logo--wordmark {
+  width: 170px;
 }
 
 .app-actions {
@@ -128,13 +132,13 @@ body {
 }
 
 .connection-status--connected {
-  border-color: rgb(0 126 233 / 25%);
-  background: rgb(0 126 233 / 8%);
-  color: var(--brand-blue-dark);
+  border-color: var(--success);
+  background: var(--white);
+  color: var(--success);
 }
 
 .connection-status--connected .connection-dot {
-  background: var(--brand-blue);
+  background: var(--success);
 }
 
 .connection-status--offline {
@@ -181,7 +185,6 @@ body {
   cursor: pointer;
   transition:
     transform 150ms ease,
-    box-shadow 150ms ease,
     background 150ms ease;
 }
 
@@ -207,7 +210,6 @@ body {
   min-width: 105px;
   background: var(--brand-blue);
   color: var(--white);
-  box-shadow: var(--shadow-button);
 }
 
 .button--primary:hover:not(:disabled) {
@@ -272,9 +274,7 @@ body {
   padding: 20px 44px 18px 20px;
   border: 1px solid rgb(0 126 233 / 16%);
   border-radius: 18px;
-  background: rgb(255 255 255 / 94%);
-  box-shadow: 0 16px 40px rgb(1 65 150 / 12%);
-  backdrop-filter: blur(10px);
+  background: var(--white);
 }
 
 .coach--hidden { display: none; }
@@ -319,13 +319,63 @@ body {
   line-height: 1.65;
 }
 
+/* Live servo telemetry */
+
+.servo-monitor {
+  position: absolute;
+  z-index: 10;
+  right: max(18px, env(safe-area-inset-right));
+  bottom: max(18px, env(safe-area-inset-bottom));
+  width: min(560px, calc(100vw - 190px));
+  padding: 12px 16px 14px;
+  border: 1px solid rgb(0 126 233 / 18%);
+  border-radius: 16px;
+  background: var(--white);
+}
+
+.servo-monitor__title {
+  margin-bottom: 8px;
+  color: var(--gray-500);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.servo-monitor__values {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.servo-monitor__values div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+  padding: 7px 9px;
+  border-radius: 10px;
+  background: var(--gray-50);
+  color: var(--gray-700);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.servo-monitor__values output {
+  min-width: 34px;
+  color: var(--brand-blue-dark);
+  font-size: 15px;
+  font-weight: 700;
+  text-align: right;
+}
+
 /* Blockly-generated elements */
 
 .blocklyToolboxDiv {
   padding-top: 10px;
   background: var(--white) !important;
   border-right: 1px solid var(--gray-200);
-  box-shadow: 4px 0 14px rgb(1 65 150 / 5%);
 }
 
 .blocklyTreeRow {
@@ -366,7 +416,7 @@ body {
   position: fixed;
   z-index: 40;
   right: 22px;
-  bottom: 22px;
+  bottom: 112px;
 
   max-width: min(380px, calc(100vw - 44px));
 
@@ -378,7 +428,6 @@ body {
 
   border-radius: 12px;
   background: var(--brand-blue-dark);
-  box-shadow: 0 12px 32px rgb(1 65 150 / 22%);
 
   color: var(--white);
   font-size: 14px;
@@ -411,9 +460,20 @@ body {
     padding-left: 12px;
   }
 
+  .brand {
+    gap: 6px;
+  }
+
   .brand-logo {
-    width: 142px;
-    height: 50px;
+    height: 44px;
+  }
+
+  .brand-logo--square {
+    width: 44px;
+  }
+
+  .brand-logo--wordmark {
+    width: 120px;
   }
 
   .connection-status {
@@ -450,6 +510,12 @@ body {
     padding: 16px 38px 14px 16px;
   }
 
+  .servo-monitor {
+    right: 12px;
+    bottom: max(12px, env(safe-area-inset-bottom));
+    width: min(520px, calc(100vw - 165px));
+  }
+
   .button--primary {
     min-width: 88px;
   }
@@ -462,12 +528,38 @@ body {
 }
 
 @media (max-width: 430px) {
+  .brand {
+    gap: 3px;
+  }
+
   .brand-logo {
-    width: 104px;
-    height: 46px;
+    height: 34px;
+  }
+
+  .brand-logo--square {
+    width: 34px;
+  }
+
+  .brand-logo--wordmark {
+    width: 78px;
   }
 
   .coach { display: none; }
+
+  .servo-monitor {
+    right: 12px;
+    left: 12px;
+    width: auto;
+    padding: 10px;
+  }
+
+  .servo-monitor__values {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .toast {
+    bottom: 152px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

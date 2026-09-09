@@ -15,7 +15,7 @@
   <title>BlockBot</title>
 
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="style.css?v=4">
+  <link rel="stylesheet" href="style.css?v=6">
 
   <!-- Pin Blockly so future CDN updates do not unexpectedly break the UI. -->
   <script src="https://unpkg.com/blockly@11.2.2/blockly_compressed.js"></script>
@@ -26,10 +26,20 @@
 
 <body>
   <header class="app-header">
-    <div class="brand" aria-label="BlockBot">
+    <div class="brand" aria-label="Simba and BlockBot">
       <img
-        class="brand-logo"
-        src="blockbot-logo.svg"
+        class="brand-logo brand-logo--square"
+        src="simba-logo.svg"
+        alt="Simba logo"
+      >
+      <img
+        class="brand-logo brand-logo--square"
+        src="robot-arm-logo.jpg"
+        alt="BlockBot robot arm logo"
+      >
+      <img
+        class="brand-logo brand-logo--wordmark"
+        src="blockbot-wordmark.jpg"
         alt="BlockBot — Drag. Drop. Move."
       >
     </div>
@@ -78,11 +88,20 @@
         <li>Press <strong>Run</strong></li>
       </ol>
     </aside>
+    <aside class="servo-monitor" aria-label="Live servo positions">
+      <div class="servo-monitor__title">Live servo positions</div>
+      <div class="servo-monitor__values" aria-live="polite">
+        <div><span>Base</span><output id="servoPosition0">--°</output></div>
+        <div><span>In / Out</span><output id="servoPosition1">--°</output></div>
+        <div><span>Up / Down</span><output id="servoPosition2">--°</output></div>
+        <div><span>Gripper</span><output id="servoPosition3">--°</output></div>
+      </div>
+    </aside>
   </main>
 
   <div id="toast" class="toast" role="alert" aria-live="assertive"></div>
 
   <script src="blocks.js?v=3"></script>
-  <script src="app.js?v=3"></script>
+  <script src="app.js?v=5"></script>
 </body>
 </html>
