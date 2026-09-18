@@ -40,3 +40,46 @@ gen.forBlock.move_joint = block =>
   `await moveJoint(${block.getFieldValue('JOINT')}, ${block.getFieldValue('ANGLE')});\n`;
 gen.forBlock.wait = block =>
   `await wait(${block.getFieldValue('SECONDS')});\n`;
+
+// Blockly's built-in procedure generators create synchronous JavaScript
+// functions. BlockBot commands are asynchronous, so procedures must be async
+// as well; otherwise a procedure would finish before its robot movements do.
+function procedureArguments(block, generator) {
+  return block.getVars().map(argument => generator.nameDB_.getName(
+    argument,
+    Blockly.Names.NameType.VARIABLE,
+  ));
+}
+
+gen.forBlock.procedures_defnoreturn = (block, generator) => {
+  const name = generator.getProcedureName(block.getFieldValue('NAME'));
+  const argumentsList = procedureArguments(block, generator);
+  const body = generator.statementToCode(block, 'STACK');
+  generator.definitions_[`%${name}`] =
+    `async function ${name}(${argumentsList.join(', ')}) {\n${body}}\n`;
+  return null;
+};
+
+gen.forBlock.procedures_defreturn = (block, generator) => {
+  const name = generator.getProcedureName(block.getFieldValue('NAME'));
+  const argumentsList = procedureArguments(block, generator);
+  const body = generator.statementToCode(block, 'STACK');
+  const returnValue = generator.valueToCode(block, 'RETURN', javascript.Order.NONE) || 'null';
+  generator.definitions_[`%${name}`] =
+    `async function ${name}(${argumentsList.join(', ')}) {\n${body}  return ${returnValue};\n}\n`;
+  return null;
+};
+
+gen.forBlock.procedures_callnoreturn = (block, generator) => {
+  const name = generator.getProcedureName(block.getFieldValue('NAME'));
+  const argumentsList = Array.from({ length: block.argumentCount_ }, (_, index) =>
+    generator.valueToCode(block, `ARG${index}`, javascript.Order.NONE) || 'null');
+  return `await ${name}(${argumentsList.join(', ')});\n`;
+};
+
+gen.forBlock.procedures_callreturn = (block, generator) => {
+  const name = generator.getProcedureName(block.getFieldValue('NAME'));
+  const argumentsList = Array.from({ length: block.argumentCount_ }, (_, index) =>
+    generator.valueToCode(block, `ARG${index}`, javascript.Order.NONE) || 'null');
+  return [`await ${name}(${argumentsList.join(', ')})`, javascript.Order.AWAIT];
+};

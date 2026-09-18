@@ -1,5 +1,4 @@
 :root {
-  /* BlockBot pitch-deck colors */
   --brand-blue: #007ee9;
   --brand-blue-dark: #014196;
   --brand-orange: #e96b00;
@@ -249,6 +248,16 @@ body {
   border-left: 10px solid currentColor;
 }
 
+.button--emergency {
+  min-width: 92px;
+  background: #c80909;
+  color: var(--white);
+}
+
+.button--emergency:hover:not(:disabled) {
+  background: #9f2626;
+}
+
 /* Blockly editor */
 
 .editor {
@@ -319,12 +328,13 @@ body {
   line-height: 1.65;
 }
 
-/* Live servo telemetry */
+/* Live servo */
 
 .servo-monitor {
   position: absolute;
   z-index: 10;
-  right: max(18px, env(safe-area-inset-right));
+  left: 170px;
+  right: auto;
   bottom: max(18px, env(safe-area-inset-bottom));
   width: min(560px, calc(100vw - 190px));
   padding: 12px 16px 14px;
@@ -370,7 +380,7 @@ body {
   text-align: right;
 }
 
-/* Blockly-generated elements */
+/* Blockly generated elements */
 
 .blocklyToolboxDiv {
   padding-top: 10px;
@@ -511,7 +521,8 @@ body {
   }
 
   .servo-monitor {
-    right: 12px;
+    left: 153px;
+    right: auto;
     bottom: max(12px, env(safe-area-inset-bottom));
     width: min(520px, calc(100vw - 165px));
   }

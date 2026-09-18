@@ -30,6 +30,7 @@ from joystick import JoystickController
 arm = Arm()
 app = Microdot()
 clients = []
+emergency_stopped = False
 
 
 async def send_positions(positions=None, client=None):
@@ -68,6 +69,23 @@ async def ws(request, ws):
                 break
             command = json.loads(data)
             print('got:', command)
+
+            global emergency_stopped
+
+            if command['cmd'] == 'estop':
+                emergency_stopped = True
+                print('EMERGENCY STOP ACTIVATED')
+                await send_positions()
+                continue
+
+            if command['cmd'] == 'reset_estop':
+                emergency_stopped = False
+                print('Emergency stop reset')
+                continue
+
+            if emergency_stopped:
+                print('Ignoring command: emergency stop is active')
+                continue
             if command['cmd'] == 'move':
                 arm.move(command['channel'], command['angle'])
                 await send_positions()

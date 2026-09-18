@@ -15,7 +15,7 @@
   <title>BlockBot</title>
 
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="style.css?v=6">
+  <link rel="stylesheet" href="style.css?v=7">
 
   <!-- Pin Blockly so future CDN updates do not unexpectedly break the UI. -->
   <script src="https://unpkg.com/blockly@11.2.2/blockly_compressed.js"></script>
@@ -63,7 +63,20 @@
       >
         New
       </button>
-
+      <button
+        id="emergencyStop"
+        class="button button--emergency"
+        type="button"
+      >
+        STOP
+      </button>
+      <button
+        id="resetEmergencyStop"
+        class="button button--secondary"
+        type="button"
+      >
+        Reset stop
+      </button>
       <button
         id="run"
         class="button button--primary"
@@ -81,15 +94,15 @@
     <aside id="coach" class="coach" aria-label="Getting started">
       <button id="coachClose" class="coach-close" type="button" aria-label="Dismiss tips">×</button>
       <div class="coach-eyebrow">Quick start</div>
-      <div class="coach-title">Build it. Run it. Watch it move.</div>
+      <div class="coach-title">Drag it. Drop it. Watch it move.</div>
       <ol>
-        <li>Turn on the  <strong>Robot</strong> Arm</li>
+        <li>Turn on the  <strong>Robot Arm</strong></li>
         <li>Snap blocks under the orange block <strong>when Run clicked</strong></li>
         <li>Press <strong>Run</strong></li>
       </ol>
     </aside>
     <aside class="servo-monitor" aria-label="Live servo positions">
-      <div class="servo-monitor__title">Live servo positions</div>
+      <div class="servo-monitor__title">servo positions</div>
       <div class="servo-monitor__values" aria-live="polite">
         <div><span>Base</span><output id="servoPosition0">--°</output></div>
         <div><span>In / Out</span><output id="servoPosition1">--°</output></div>
@@ -101,7 +114,7 @@
 
   <div id="toast" class="toast" role="alert" aria-live="assertive"></div>
 
-  <script src="blocks.js?v=3"></script>
-  <script src="app.js?v=5"></script>
+  <script src="blocks.js?v=4"></script>
+  <script src="app.js?v=7"></script>
 </body>
 </html>

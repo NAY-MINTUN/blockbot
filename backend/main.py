@@ -54,6 +54,12 @@ async def relay(browser: WebSocket):
                 await send_browser({'ok': False, 'error': 'Command must be an object.'})
                 continue
 
+            if command.get('cmd') in ('estop', 'reset_estop'):
+                await arm_conn.send(json.dumps(command))
+                log.append({'type': 'sent', 'command': command})
+                await send_browser({'ok': True})
+                continue
+
             if command.get('cmd') != 'move':
                 await send_browser({'ok': False, 'error': 'Unknown command.'})
                 continue

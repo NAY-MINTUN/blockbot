@@ -46,6 +46,8 @@ const backendUrl = (() => {
 
 const statusElement = document.getElementById('status');
 const statusText = document.getElementById('statusText');
+const emergencyStopButton = document.getElementById('emergencyStop');
+const resetEmergencyStopButton = document.getElementById('resetEmergencyStop');
 const runButton = document.getElementById('run');
 const newButton = document.getElementById('newProgram');
 const toast = document.getElementById('toast');
@@ -57,6 +59,7 @@ let reconnectTimer;
 let reconnectAttempt = 0;
 let toastTimer;
 let running = false;
+let stopRequested = false;
 let pendingReply;
 
 function showToast(message, isError = false) {
@@ -77,7 +80,7 @@ function setStatus(state, detail = '') {
   statusElement.className = `connection-status connection-status--${state}`;
   statusText.textContent = labels[state];
   statusElement.title = detail || labels[state];
-  runButton.disabled = state !== 'connected' || running;
+  runButton.disabled = state !== 'connected' || running || stopRequested;
 }
 
 function updateServoPositions(angles) {
@@ -153,6 +156,9 @@ function sendCommand(message) {
 }
 
 function moveJoint(channel, angle) {
+  if (stopRequested) {
+    return Promise.reject(new Error('Program stopped by emergency stop.'));
+  }
   return sendCommand({ cmd: 'move', channel, angle });
 }
 
@@ -202,9 +208,58 @@ function loadProgram() {
   }
 }
 
+function generateProgramCode(startBlocks) {
+  const generator = javascript.javascriptGenerator;
+  generator.init(workspace);
+
+  // Procedure definitions are separate top-level blocks, not children of the
+  // Run block. Generate them first so calls made by the Run program exist.
+  workspace.getTopBlocks(true)
+    .filter(block => block.type === 'procedures_defnoreturn' || block.type === 'procedures_defreturn')
+    .forEach(block => generator.blockToCode(block));
+
+  const statements = startBlocks
+    .map(block => block.getNextBlock())
+    .filter(Boolean)
+    .map(block => generator.blockToCode(block))
+    .map(result => Array.isArray(result) ? result[0] : result)
+    .join('\n');
+
+  return generator.finish(statements);
+}
+
 loadProgram();
 workspace.addChangeListener(event => {
   if (!event.isUiEvent) saveProgram();
+});
+
+async function emergencyStop() {
+  stopRequested = true;
+  running = false; // prevents more Blockly commands from being sent
+
+  try {
+    await sendCommand({ cmd: 'estop' });
+    showToast('Emergency stop activated.', true);
+  } catch (error) {
+    showToast(`Stop command failed: ${error.message}`, true);
+  }
+
+  runButton.classList.remove('button--running');
+  document.getElementById('runText').textContent = 'Run';
+  setStatus(socket?.readyState === WebSocket.OPEN ? 'connected' : 'offline');
+}
+
+emergencyStopButton.addEventListener('click', emergencyStop);
+
+resetEmergencyStopButton.addEventListener('click', async () => {
+  try {
+    await sendCommand({ cmd: 'reset_estop' });
+    stopRequested = false;
+    setStatus(socket?.readyState === WebSocket.OPEN ? 'connected' : 'offline');
+    showToast('Emergency stop reset. Robot controls are ready.');
+  } catch (error) {
+    showToast(`Could not reset stop: ${error.message}`, true);
+  }
 });
 
 newButton.addEventListener('click', () => {
@@ -216,21 +271,18 @@ newButton.addEventListener('click', () => {
 });
 
 runButton.addEventListener('click', async () => {
+  if (stopRequested) {
+    showToast('Reset the emergency stop before running a new program.', true);
+    return;
+  }
+
   const startBlocks = workspace.getTopBlocks(true).filter(block => block.type === 'when_run');
   if (startBlocks.length === 0) {
     showToast('Add a “when Run clicked” block first.', true);
     return;
   }
 
-  const generator = javascript.javascriptGenerator;
-  generator.init(workspace);
-  const generatedStatements = startBlocks
-    .map(block => block.getNextBlock())
-    .filter(Boolean)
-    .map(block => generator.blockToCode(block))
-    .map(result => Array.isArray(result) ? result[0] : result)
-    .join('\n');
-  const code = generator.finish(generatedStatements);
+  const code = generateProgramCode(startBlocks);
 
   if (!code.trim()) {
     showToast('Snap a robot block under “when Run clicked”.', true);
