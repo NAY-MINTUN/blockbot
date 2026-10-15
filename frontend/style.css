@@ -92,6 +92,47 @@ body {
   gap: 10px;
 }
 
+.app-dialog { width:min(560px,calc(100vw - 32px)); max-height:85vh; padding:24px; border:0; border-radius:20px; box-shadow:0 24px 80px #17203340; color:var(--gray-900); }
+.app-dialog::backdrop { background:#101b2db8; backdrop-filter:blur(3px); }
+.app-dialog--small { width:min(420px,calc(100vw - 32px)); }
+.dialog-heading { display:flex; justify-content:space-between; align-items:flex-start; }
+.dialog-heading h2 { margin:4px 0 20px; font-size:25px; }
+.dialog-close { border:0; background:transparent; font-size:28px; color:var(--gray-500); cursor:pointer; }
+.device-list { display:grid; gap:12px; margin-bottom:20px; }
+.device-card { padding:16px; border:1px solid var(--gray-200); border-radius:14px; }
+.device-card__top { display:flex; justify-content:space-between; gap:12px; align-items:center; }
+.device-card__actions { display:flex; align-items:center; gap:8px; flex-shrink:0; }
+.device-card h3,.device-form h3 { margin:0 0 6px; }
+.device-card p,.form-note { color:var(--gray-500); font-size:13px; margin:5px 0 12px; overflow-wrap:anywhere; }
+.device-form { display:grid; gap:12px; padding-top:16px; border-top:1px solid var(--gray-200); }
+.device-form label { display:grid; gap:6px; color:var(--gray-700); font-weight:700; font-size:13px; }
+.device-form input,.device-form select { width:100%; padding:11px 12px; border:1px solid var(--gray-200); border-radius:9px; font:inherit; }
+.password-control { position:relative; width:100%; }
+.password-control input { padding-right:48px; }
+.password-toggle { position:absolute; top:50%; right:8px; display:grid; place-items:center; width:34px; height:34px; padding:6px; transform:translateY(-50%); border:0; border-radius:8px; background:transparent; color:var(--gray-500); cursor:pointer; }
+.password-toggle:hover { background:var(--gray-100); color:var(--brand-blue-dark); }
+.password-toggle:focus-visible { outline:3px solid rgb(233 107 0 / 40%); outline-offset:2px; }
+.password-toggle svg { width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+.limit-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px 12px; margin-top:12px; }
+.limit-grid label { font-size:12px; }
+.text-button { border:0; background:transparent; color:var(--brand-blue-dark); font:inherit; font-weight:700; cursor:pointer; }
+.app-shell { visibility:hidden; }
+.app-shell.is-authenticated { visibility:visible; }
+.auth-gate { position:fixed; inset:0; z-index:1000; display:grid; place-items:center; padding:20px; background:linear-gradient(135deg,#eaf5ff,#fff8f1); }
+.auth-gate[hidden] { display:none; }
+.auth-card { width:min(420px,100%); padding:34px; border-radius:22px; background:white; box-shadow:0 24px 80px #17203320; }
+.auth-brand { margin-bottom:34px; color:var(--brand-blue); font-size:26px; font-weight:900; }
+.auth-brand span { color:var(--brand-orange); }
+.auth-card h1 { margin:6px 0; font-size:32px; }
+.auth-description { color:var(--gray-500); margin-bottom:22px; }
+.device-empty { position:absolute; z-index:5; inset:0; display:flex; align-items:center; justify-content:center; flex-direction:column; text-align:center; padding:24px; background:#f8fafcf2; }
+.device-empty[hidden] { display:none; }
+.device-empty h1 { margin:4px 0; }
+.device-empty p:not(.coach-eyebrow) { color:var(--gray-500); max-width:440px; }
+.device-empty__icon { display:grid; place-items:center; width:60px;height:60px;border-radius:18px;background:#e7f3ff;color:var(--brand-blue);font-size:36px; }
+.setup-guide { padding:12px 14px; background:#fff7ed; border-radius:12px; color:var(--gray-700); font-size:13px; }
+.setup-guide p { margin:6px 0 0; line-height:1.5; }
+
 .save-state {
   color: var(--gray-500);
   font-size: 12px;
@@ -237,6 +278,17 @@ body {
 .button--secondary:hover:not(:disabled) {
   border-color: var(--brand-blue);
   background: rgb(0 126 233 / 6%);
+}
+
+.button.button--delete {
+  background:#fff8f1;
+  color:var(--brand-orange-dark);
+  border:1px solid #f2c69f;
+}
+
+.button.button--delete:hover:not(:disabled) {
+  background:#ffeedf;
+  border-color:var(--brand-orange);
 }
 
 .run-icon {
@@ -460,6 +512,10 @@ body {
 /* Tablet layout */
 
 @media (max-width: 760px) {
+  .app-header { gap:8px; }
+  .app-actions { gap:5px; }
+  .save-state { display:none; }
+  .app-actions .button { padding:8px 10px; font-size:12px; min-height:38px; }
   :root {
     --header-height: 68px;
   }

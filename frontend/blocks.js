@@ -20,7 +20,7 @@ Blockly.defineBlocksWithJsonArray([
     previousStatement: null,
     nextStatement: null,
     colour: '#007EE9',
-    tooltip: 'Move one robot joint. The backend checks every angle for safety.'
+    tooltip: 'Move one robot joint. Angles are limited by the range you set for that joint.'
   },
   {
     type: 'wait',
@@ -43,7 +43,7 @@ gen.forBlock.wait = block =>
 
 // Blockly's built-in procedure generators create synchronous JavaScript
 // functions. BlockBot commands are asynchronous, so procedures must be async
-// as well; otherwise a procedure would finish before its robot movements do.
+// as well. otherwise a procedure would finish before its robot movements do.
 function procedureArguments(block, generator) {
   return block.getVars().map(argument => generator.nameDB_.getName(
     argument,

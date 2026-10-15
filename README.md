@@ -1,407 +1,195 @@
 # BlockBot
 
-BlockBot is an educational robot-arm system controlled through a browser-based
-Blockly editor or two physical joysticks. The ESP32 receives JSON commands over
-WebSocket and drives four servos through a PCA9685 board. Safety limits are
-enforced in both the FastAPI relay and the ESP32 firmware.
+BlockBot lets you control a robot arm with a block editor or physical joysticks.
+The app runs in a web browser. An ESP32 connects to the arm and talks to the app
+through a local Python server.
 
-The robot hardware and FastAPI relay operate on the same trusted Wi-Fi network.
-For a supervised public demonstration, the relay can be temporarily exposed
-through a secure HTTPS/WebSocket tunnel such as ngrok. The public endpoint must
-be stopped after the demonstration because application-level authentication is
-not implemented yet.
+## What BlockBot can do
 
-## Project Status
+- Create an account or sign in.
+- Add, connect, and delete devices.
+- Show robot controls when a robot arm is selected.
+- Let you set the minimum and maximum angle for each joint.
+- Save devices and programs to your account on this computer.
+- Control the arm with Blockly blocks or two physical joysticks.
+- Stop a running program with the **STOP** button.
+- Use the physical joysticks even when the ESP32 is not connected to home Wi-Fi.
 
-**Currently Implemented:**
-- ESP32 firmware with WebSocket server (Microdot)
-- 4-servo arm control with safety limits enforced per servo
-- FastAPI relay backend for validated command relay
-- Blockly-based visual programming editor
-- Local browser program auto-save
-- Non-blocking control from two physical analog joysticks
-- Automatic joystick centre calibration at startup
-- Live commanded-angle display in the browser and Thonny console
-- Temporary public demonstrations through an HTTPS/WebSocket tunnel
+Accounts and saved data belong to this local BlockBot installation. There is no
+email verification or password reset.
 
-**In Development:**
-- On-screen touch joystick interface
-- Named program save/load functionality
+## Parts
 
----
-
-## Hardware
-
-| Part | Quantity | Purpose |
-|------|----------|---------|
-| ESP32 | 1 | Runs the firmware and WiFi WebSocket server |
-| PCA9685 | 1 | I2C servo driver board |
-| MG996R servo | 1 | Base (turntable rotation) |
-| MG90S servo | 3 | In/Out arm, Up/Down arm, Gripper |
-| KY-023 analog joystick module | 2 | Physical joystick control (optional) |
-| 5V power supply | 1 | Dedicated power for servos |
-
----
-
-## Power Setup
-
-- The ESP32 runs on USB power from your computer.
-- The 4 servos run on a **separate 5V power supply**. Never power servos from the ESP32 — they draw too much current and will reset it.
-- All grounds must be connected together: ESP32 GND, PCA9685 GND, and power supply GND.
-
----
+| Part | What it does |
+|------|--------------|
+| ESP32 | Runs the robot firmware and connects to Wi-Fi |
+| PCA9685 board | Controls the servos |
+| 1 MG996R servo | Turns the base |
+| 3 MG90S servos | Move the arm and gripper |
+| 2 KY-023 joysticks | Optional physical controls |
+| Separate 5 V power supply | Powers the servos |
 
 ## Wiring
 
-### ESP32 ↔ PCA9685 (I2C)
+### ESP32 to PCA9685
 
-| ESP32 Pin | PCA9685 Pin |
-|-----------|-------------|
-| 3.3V      | VCC         |
-| GND       | GND         |
-| GPIO 21   | SDA         |
-| GPIO 22   | SCL         |
+| ESP32 | PCA9685 |
+|-------|---------|
+| 3.3 V | VCC |
+| GND | GND |
+| GPIO 21 | SDA |
+| GPIO 22 | SCL |
 
-### Servos → PCA9685
+### Servos to PCA9685
 
-| PCA9685 Channel | Servo Type | Joint             |
-|-----------------|-----------|-------------------|
-| CH0             | MG996R    | Base (Turntable)  |
-| CH1             | MG90S     | In/Out Arm        |
-| CH2             | MG90S     | Up/Down Arm       |
-| CH3             | MG90S     | Gripper           |
+| PCA9685 channel | Servo | Joint |
+|-----------------|-------|-------|
+| CH0 | MG996R | Base |
+| CH1 | MG90S | In / Out |
+| CH2 | MG90S | Up / Down |
+| CH3 | MG90S | Gripper |
 
-### Joysticks → ESP32 (Optional)
+### Optional joysticks
 
-| GPIO Pin | Joystick Pin | Controls        |
-|----------|-------------|-----------------|
-| 32       | JY1 VRx     | Base rotation   |
-| 33       | JY1 VRy     | In/Out arm      |
-| 34       | JY2 VRx     | Up/Down arm     |
-| 35       | JY2 VRy     | Gripper         |
+| ESP32 pin | Joystick output | Joint |
+|-----------|-----------------|-------|
+| GPIO 32 | JY1 VRx | Base |
+| GPIO 33 | JY1 VRy | In / Out |
+| GPIO 34 | JY2 VRx | Up / Down |
+| GPIO 35 | JY2 VRy | Gripper |
 
-Connect all joystick VCC pins to 3.3V and all GND pins to GND.
+Connect joystick VCC to 3.3 V and GND to GND. Connect all grounds together:
+ESP32, PCA9685, and the servo power supply.
 
----
+**Do not power the servos from the ESP32.** Use a separate, regulated 5 V supply
+for the servos.
 
-## Servo Safety Limits
+## Set up the ESP32
 
-These limits were determined by physical testing and are enforced by the firmware. No command can move a servo past these angles.
+### Before you start
 
-| Channel | Joint            | Servo  | Min Angle | Max Angle |
-|---------|------------------|--------|-----------|-----------|
-| 0       | Base             | MG996R | 0°        | 180°      |
-| 1       | In/Out Arm       | MG90S  | 40°       | 125°      |
-| 2       | Up/Down Arm      | MG90S  | 30°       | 130°      |
-| 3       | Gripper          | MG90S  | 90°       | 150°      |
+- Flash MicroPython onto the ESP32.
+- Install Thonny and set its interpreter to MicroPython (ESP32).
+- Upload these files and folders from `firmware/` to the ESP32:
+  - `main.py`
+  - `servo.py`
+  - `pca9685.py`
+  - `joystick.py`
+  - `helpers.py`
+  - the full `microdot/` folder
 
----
+### Upload from VS Code with MicroPico
 
-## Firmware Installation
+The project targets a classic ESP32 module. MicroPico lists ESP32-WROOM support
+as experimental; its main workflow is designed for Raspberry Pi Pico boards.
+If you use it with this ESP32, results may vary.
 
-### Prerequisites
-- MicroPython v1.28 (or later) flashed onto the ESP32
-- Thonny IDE with MicroPython (ESP32) interpreter configured
+1. In VS Code, open the `firmware/` folder as the workspace.
+2. Connect the ESP32 using a USB data cable. Install MicroPico from the VS Code
+   Extensions view, then run **MicroPico: Switch Board** from the Command
+   Palette (`Cmd+Shift+P` on macOS) and select the ESP32 serial port.
+3. Run MicroPico's project upload command or use its upload button. Upload the
+   entire `firmware/` workspace so `main.py`, the other Python files, and the
+   complete `microdot/` folder are copied to the board.
+4. Include `config.py` if you want the ESP32 to join your saved Wi-Fi network.
+   It contains your Wi-Fi password; do not publish or commit it to a shared
+   repository.
+5. Reset the ESP32 and watch MicroPico's terminal for startup output.
 
-### Steps
+Press **Cmd+S** to save edits on your Mac; uploading is a separate step that
+copies the saved files to the ESP32. MicroPico's support for ESP32 is
+experimental, so if upload fails, use another MicroPython-compatible serial
+file transfer tool or Thonny to copy the same files.
 
-1. **Create the private WiFi config** from the example:
-   ```python
-   # firmware/config.py
-   WIFI_SSID = 'Your_Network'
-   WIFI_PASSWORD = 'Your_Password'
-   ```
-   `firmware/config.py` is ignored by Git. Upload it to the ESP32 with the
-   other firmware files.
+### Connect it to Wi-Fi
 
-2. **Upload these files to the ESP32** via Thonny:
-   - `pca9685.py` (PCA9685 I2C driver)
-   - `servo.py` (Arm class with safety limits)
-   - `joystick.py` (non-blocking physical joystick control)
-   - `main.py` (WebSocket server)
-   - `microdot/` (Microdot web framework and WebSocket support)
+1. Restart the ESP32.
+2. On your computer or phone, join Wi-Fi named `BlockBot-Setup`. The password
+   is `blockbot`.
+3. Open `http://192.168.4.1:8080`.
+4. Enter your home Wi-Fi name and password.
+5. The ESP32 restarts and joins your home Wi-Fi. Thonny prints its new IP address.
 
-3. **Reset the ESP32** by pressing the EN button. The IP address will print in Thonny's shell.
+## Run BlockBot
 
----
+Open a terminal in the project folder and run:
 
-## WebSocket Server
-
-The ESP32 runs a WebSocket server at:
-```
-ws://[ESP32_IP]:8080/ws
-```
-
-Replace `[ESP32_IP]` with the IP address printed when the ESP32 boots.
-
-### Command Format
-
-All commands are sent as JSON over the WebSocket connection.
-
-#### Move a Servo
-
-```json
-{"cmd": "move", "channel": 0, "angle": 90}
-```
-
-| Field     | Type   | Description |
-|-----------|--------|-------------|
-| `cmd`     | string | `"move"` |
-| `channel` | number | Servo channel (0–3) |
-| `angle`   | number | Target angle in degrees (automatically clamped to safe range) |
-
-#### Wait
-
-```json
-{"cmd": "wait", "second": 1}
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+uvicorn backend.main:app --host 127.0.0.1 --port 8000
 ```
 
-| Field    | Type   | Description |
-|----------|--------|-------------|
-| `cmd`    | string | `"wait"` |
-| `second` | number | Duration in seconds |
+Open [http://localhost:8000](http://localhost:8000) in your browser. Create an
+account or sign in. Keep the terminal open while using BlockBot. To stop the
+server, press **Ctrl+C** in that terminal.
 
-### Example Command Sequence
+## Add and set up the arm
 
-Send each JSON object as a separate WebSocket message:
+1. In BlockBot, open **Devices** and choose **Find devices**.
+2. If the arm does not appear, add it manually. Use the address printed by
+   Thonny in this format: `ws://ESP32-IP:8080/ws`. For example,
+   `ws://192.168.1.198:8080/ws`.
+3. Set a minimum and maximum angle for each joint in **Devices**. The app needs
+   all four ranges before it can connect.
+4. Keep the arm clear before connecting. When the ESP32 receives the ranges, it
+   moves each joint to the middle of its range.
+5. Wait for the app to show that the robot is connected. Then build a program
+   with blocks and press **Run**.
 
-```json
-{"cmd": "move", "channel": 0, "angle": 0}
-{"cmd": "wait", "second": 1}
-{"cmd": "move", "channel": 1, "angle": 90}
-{"cmd": "move", "channel": 2, "angle": 75}
-{"cmd": "wait", "second": 2}
-{"cmd": "move", "channel": 0, "angle": 180}
-```
+Choose ranges only after checking how far each joint can safely move. Values
+must be between 0° and 180°. The app and ESP32 check commands against the ranges
+you enter.
 
----
+## Joystick control
 
-## System Architecture
+Joystick control starts when the ESP32 starts and works without a Wi-Fi
+connection or browser. Keep both joysticks released while it boots so it can
+find their centre positions. Until the browser connects, the ESP32 uses its
+built-in joint ranges (Base 0–180°, In/Out 40–125°, Up/Down 30–130°, Gripper
+90–150°). A connected browser replaces these with the limits configured in the
+app. Joysticks and Blockly can both control the arm. Keep hands and objects
+clear while either one is moving it.
 
-BlockBot uses a three-tier network architecture with a second, local input path
-for the physical joysticks:
-
-```
-[Browser / Blockly]
-        │ WebSocket
-        ▼
-[FastAPI validation relay]
-        │ WebSocket over local Wi-Fi
-        ▼
-[ESP32 / Microdot] ◀── [Two physical joysticks]
-        │ I2C
-        ▼
-[PCA9685 servo driver]
-        │ PWM
-        ▼
-[Four servos]
-```
-
-The backend relay validates all commands before forwarding them to the ESP32, providing an extra layer of safety and logging.
-
----
-
-## Running the Backend Relay
-
-The Blockly interface requires the backend relay. A developer can connect a
-separate WebSocket client directly to the ESP32 for testing, but doing so skips
-the backend validation layer.
-
-### Prerequisites
-- Python 3.8+
-- FastAPI and websockets (installed from `requirements.txt`)
-
-### Steps
-
-1. **Install dependencies** from the project root:
-   ```bash
-   python3 -m venv .venv
-   source .venv/bin/activate
-   pip install -r requirements.txt
-   ```
-
-2. **Start the app**, setting `ARM_WS` to the ESP32 address printed in Thonny:
-   ```bash
-   ARM_WS=ws://192.168.1.XXX:8080/ws \
-   uvicorn backend.main:app --host 127.0.0.1 --port 8000
-   ```
-   The UI and backend will run together at `http://localhost:8000`.
-
-3. **Verify connectivity**:
-   ```bash
-   curl http://localhost:8000/health
-   ```
-
-4. **Run the automated checks**:
-   ```bash
-   python -m unittest discover -s tests -v
-   ```
-
----
-
-## Testing and Control
-
-### Block Editor (Blockly-based, replaces the old test.html console)
-
-The frontend is now a Blockly-based visual editor (`index.html` / `blocks.js` / `app.js`). It connects to the backend relay over WebSocket and provides:
-- Drag-and-drop blocks: `when Run clicked`, `move [joint] to [angle] degrees`, `wait [seconds] seconds`
-- Standard Logic, Loops, Math, Variables, and Functions block categories
-- A connection status indicator
-- Program auto-save/load via browser local storage
-
-Note: this editor is part of the prototype and is intended for supervised local
-testing.
-
-#### Steps
-
-1. Start the BlockBot app (see "Running the Backend Relay" above).
-2. Open `http://localhost:8000` in your browser.
-3. Drag blocks into the workspace and press **Run**. Commands run in order and
-   are validated before being sent to the ESP32.
-
-### Direct WebSocket Testing
-
-You can also connect directly to the ESP32 WebSocket without the backend:
-
-```python
-import asyncio
-import json
-import websockets
-
-async def test():
-    uri = "ws://[ESP32_IP]:8080/ws"
-    async with websockets.connect(uri) as ws:
-        # Move base to 90 degrees
-        await ws.send(json.dumps({"cmd": "move", "channel": 0, "angle": 90}))
-        # Wait 1 second
-        await ws.send(json.dumps({"cmd": "wait", "second": 1}))
-
-asyncio.run(test())
-```
-
-### Live Joystick Control
-
-Physical joystick control starts automatically with `firmware/main.py` and runs
-alongside WebSocket control. Keep both joysticks released while the ESP32 boots
-so their centre positions can be calibrated. Use `firmware/joystick_test.py`
-only when testing the joysticks without Wi-Fi or browser control.
-
-At startup, the firmware moves every joint to the midpoint of its safe range.
-Keep people and objects clear of the arm before applying power.
-
-| Axis | GPIO | Joint | Channel |
-|------|------|-------|---------|
-| JY1 VRx | 32 | Base rotation | 0 |
-| JY1 VRy | 33 | In/Out arm | 1 |
-| JY2 VRx | 34 | Up/Down arm | 2 |
-| JY2 VRy | 35 | Gripper | 3 |
-
-The integrated controller samples every 50 ms, ignores small readings around
-the calibrated centre, and moves by up to 3 degrees per sample. Direction,
-dead-zone, speed, and timing settings are defined near the top of
-`firmware/joystick.py`.
-
-While a joystick or Blockly program moves the arm, the ESP32 publishes the four
-latest commanded angles to connected browsers. These are software command
-positions, not measurements from physical position sensors. The firmware also
-prints the positions in the Thonny console while joystick movement is active.
-
----
-
-## Firmware Files
-
-| File | Purpose |
-|------|---------|
-| `main.py` | WebSocket server, entry point |
-| `servo.py` | `Arm` class — moves servos and enforces safety limits |
-| `pca9685.py` | Low-level I2C driver for the PCA9685 servo board |
-| `joystick.py` | Non-blocking two-joystick controller |
-| `joystick_test.py` | Live joystick control utility |
-| `helpers.py` | MicroPython compatibility helpers |
-| `microdot/` | Embedded Microdot web framework and WebSocket support |
-
----
-
-## Backend Files
-
-| File | Purpose |
-|------|---------|
-| `main.py` | FastAPI relay server with WebSocket handling |
-| `validator.py` | Command validation — checks channel and angle bounds |
-
----
+| Joystick axis | ESP32 pin | Joint |
+|---------------|-----------|-------|
+| JY1 VRx | GPIO 32 | Base |
+| JY1 VRy | GPIO 33 | In / Out |
+| JY2 VRx | GPIO 34 | Up / Down |
+| JY2 VRy | GPIO 35 | Gripper |
 
 ## Troubleshooting
 
-### ESP32 Firmware
+### The app cannot find the ESP32
 
-**Problem: "Cannot connect to ESP32"**
-- Verify the ESP32 is on the same WiFi network as your computer.
-- Check the IP address in Thonny's shell — it should print when the ESP32 boots.
-- Ensure WiFi credentials in `firmware/config.py` are correct.
+- Check that the computer and ESP32 use the same Wi-Fi network.
+- Read the ESP32 IP address in Thonny and add the WebSocket address manually:
+  `ws://ESP32-IP:8080/ws`.
+- Check that the router allows devices on Wi-Fi to talk to each other.
+- Make sure the ESP32 is powered on and its firmware is running.
 
-**Problem: "Servos not responding"**
-- Check the I2C wiring between ESP32 and PCA9685.
-- Verify GPIO 21 (SDA) and GPIO 22 (SCL) are correct in `servo.py`.
-- Ensure the 5V power supply is connected and delivering power to the PCA9685.
+### The app says the robot is offline
 
-**Problem: "Servo moves jerkily or overshoots"**
-- The ESP32 may have crashed. Press the EN (reset) button on the board.
-- If a servo is at a mechanical stop, the firmware won't exceed its safe limits. Check the angle limits in `servo.py`.
+- Check the saved device address. `127.0.0.1` points to the computer running the
+  app, not to the ESP32.
+- Check the Wi-Fi connection and the IP address printed by Thonny.
+- Make sure all four joint ranges are filled in.
 
-### Backend Relay
+### The servos do not move
 
-**Problem: "Cannot reach the robot" message in the block editor**
-- Verify the `ARM_WS` environment variable points to your ESP32's IP and port.
-- Ensure the ESP32 WebSocket server is running.
-- Check that your computer and ESP32 are on the same WiFi network.
+- Check the PCA9685 I2C wiring: SDA to GPIO 21 and SCL to GPIO 22.
+- Check the separate 5 V servo supply and the shared ground connections.
+- Check that the ranges you entered allow the requested movement.
 
-**Problem: "Arm connection lost" during command**
-- The ESP32 WebSocket connection may have dropped. Reload the block editor.
-- Check the ESP32 power supply — servos drawing too much current can cause resets.
+## Project files
 
-### Block Editor
-
-**Problem: "Connection refused" / status indicator stays red**
-- Verify the app is running (`uvicorn backend.main:app --reload`).
-- If connecting from an iPad, open the backend machine's LAN IP instead of `localhost`.
-
----
-
-## Development Notes
-
-- **PCA9685 pulse counts**: 110–500 at 50 Hz (configured in `servo.py`).
-- **Servo frequency**: 50 Hz (standard for hobby servos).
-- **Each joint has a different safe range** because of physical constraints. These were found by testing and are stored in `LIMITS` in both `servo.py` (firmware) and `validator.py` (backend).
-- **The firmware enforces limits** to prevent damage even if invalid commands are sent.
-- **WiFi is initialized before importing Microdot** to avoid heap fragmentation (see comment in `main.py`).
-
----
-
-## Operational Safety
-
-- Always use a separate regulated 5 V supply for the servos.
-- Connect the ESP32, PCA9685, and servo power-supply grounds together.
-- Keep the arm clear when it powers on because startup homing causes movement.
-- Test newly calibrated limits at low speed before a public demonstration.
-- Do not hold a joystick while a Blockly program is running; both controls are
-  active and the most recent command determines the joint position.
-- Supervise the robot whenever servo power is connected.
-- Stop any public tunnel immediately after the demonstration.
-
-## Current Limitations
-
-- There is no emergency-stop button yet.
-- There is no controller lock between Blockly and physical joystick input.
-- Public WebSocket connections do not yet require an application token.
-- The ESP32 waits for Wi-Fi before joystick control starts.
-- Browser programs are stored only in that browser's local storage.
-
----
-
-## What Comes Next
-
-- **On-screen touch controls**: Touch-based joysticks and buttons for mobile/tablet.
-- **Named programs**: Save, rename, and load multiple programs.
-- **Emergency stop**: Cancel a running program and stop motion safely.
-- **Mobile app**: Native iOS/Android interface.
+| Path | Purpose |
+|------|---------|
+| `frontend/` | Browser app and Blockly editor |
+| `backend/main.py` | Web app and WebSocket relay |
+| `backend/validator.py` | Checks robot commands |
+| `firmware/main.py` | ESP32 Wi-Fi and WebSocket server |
+| `firmware/servo.py` | Servo control and joint ranges |
+| `firmware/joystick.py` | Physical joystick control |
+| `firmware/pca9685.py` | PCA9685 driver |

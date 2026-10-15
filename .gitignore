@@ -14,3 +14,4 @@ venv/
 # Env / secrets
 .env
 firmware/config.py
+backend/*.sqlite3*

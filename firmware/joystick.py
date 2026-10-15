@@ -3,9 +3,6 @@
 import asyncio
 from machine import ADC, Pin
 
-from servo import LIMITS
-
-
 # JY1 controls the base and in/out arm; JY2 controls up/down and gripper.
 AXES = (
     (32, 0, True),  # JY1 VRx -> base
@@ -70,6 +67,9 @@ class JoystickController:
         report_pending = False
         while True:
             changed = False
+            if self.arm.limits is None:
+                await asyncio.sleep_ms(TICK_MS)
+                continue
             for index, (_pin, channel, invert) in enumerate(AXES):
                 delta = self._delta(index)
                 if invert:
@@ -77,7 +77,7 @@ class JoystickController:
                 if not delta:
                     continue
 
-                lo, hi = LIMITS[channel]
+                lo, hi = self.arm.limits[channel]
                 target = max(lo, min(hi, self.arm.angle(channel) + delta))
                 if target != self.arm.angle(channel):
                     self.arm.move(channel, target)
